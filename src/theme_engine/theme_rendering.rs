@@ -359,6 +359,50 @@ pub(super) fn resolve_objects_for<'a>(
 /// Return the topmost interactive layer at a logical canvas point. Non-
 /// interactive layers intentionally do not block layers beneath them, which
 /// lets visual decoration sit above a larger deliberate hit area.
+/// Whether the point lies inside the rendered object with `object_id`,
+/// regardless of whether that object declares mouse events.
+pub fn point_in_object(
+    theme: &ThemeDocument,
+    surface_index: usize,
+    x: f64,
+    y: f64,
+    data: Option<&AppUsageData>,
+    runtime: ThemeRuntime,
+    object_id: &str,
+) -> bool {
+    let Some(surface) = theme.surfaces.get(surface_index) else {
+        return false;
+    };
+    if !surface_should_render(theme, surface_index, data, runtime) {
+        return false;
+    }
+    let (width, height) = resolve_object_size(surface, data, runtime, &mut Vec::new());
+    let x = x - surface_horizontal_padding(theme, surface_index, runtime) as f64;
+    let canvas = Canvas {
+        width,
+        width_expression: Some(surface.width.clone()),
+        height,
+        height_expression: Some(surface.height.clone()),
+        background: surface.background.canvas_paint(),
+    };
+    let (resolved, _) = resolve_objects_for(surface, &canvas, &surface.children, data, runtime);
+    resolved.into_iter().any(|object| {
+        object.source.id == object_id
+            && object.width > 0.0
+            && object.height > 0.0
+            && point_in_clip(
+                (x, y),
+                ClipRegion {
+                    x: object.x,
+                    y: object.y,
+                    width: object.width,
+                    height: object.height,
+                    rotation: object.rotation,
+                },
+            )
+    })
+}
+
 pub fn hit_test_mouse_event(
     theme: &ThemeDocument,
     surface_index: usize,

@@ -4,6 +4,12 @@ Notable changes to Claude Code Usage Monitor are documented here, newest first.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), with
 changes grouped into Added, Changed, Fixed, and Removed where applicable.
 
+## [Unreleased]
+
+### Changed
+
+- Show Antigravity's Gemini usage labels at rest and reveal the Claude/GPT labels while the cursor is over the Antigravity tile, replacing the timed 8 s / 2 s alternation.
+
 ## [2.20.0] - 2026-10-19
 
 ### Added
