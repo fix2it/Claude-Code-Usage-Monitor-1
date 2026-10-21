@@ -191,35 +191,32 @@ pub(super) fn dispatch_double_click(hwnd: HWND, surface_index: usize, object_id:
 }
 
 /// Theme object whose hover reveals the Antigravity Claude/GPT pool.
-const ANTIGRAVITY_HOVER_OBJECT: &str = "antigravity-provider";
+pub(super) const ANTIGRAVITY_HOVER_OBJECT: &str = "antigravity-provider";
 
 fn antigravity_hover_at(hwnd: HWND, lparam: LPARAM) -> bool {
     let state = lock_state();
     let Some(state) = state.as_ref() else {
         return false;
     };
-    let Some(surface_index) = surface_index_for_window(state, hwnd) else {
+    if surface_index_for_window(state, hwnd) != Some(0) {
+        return false;
+    }
+    let Some(rect) = state.antigravity_tile_rect else {
         return false;
     };
-    let Some(theme) = effective_theme_from_state(state) else {
+    let Some(theme) = state.active_theme.as_ref() else {
         return false;
     };
-    let scale = theme_surface_scale(&theme, surface_index).max(0.01);
-    let runtime = theme_runtime_for_surface(&theme, surface_index, theme_runtime_from_state(state));
+    let scale = theme_surface_scale(theme, 0).max(0.01);
     let (x, y) = mouse_client_point(lparam);
-    theme_engine::point_in_object(
-        &theme,
-        surface_index,
-        x / scale,
-        y / scale,
-        state.data.as_ref(),
-        runtime,
-        ANTIGRAVITY_HOVER_OBJECT,
-    )
+    let lx = x / scale;
+    let ly = y / scale;
+    lx >= rect.0 && lx < rect.0 + rect.2 && ly >= rect.1 && ly < rect.1 + rect.3
 }
 
 pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
     set_antigravity_hover(hwnd, antigravity_hover_at(hwnd, lparam));
+    super::tick_antigravity_crossfade(hwnd, true);
     unsafe {
         let mut tracking = TRACKMOUSEEVENT {
             cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,

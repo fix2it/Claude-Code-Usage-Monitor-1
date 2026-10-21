@@ -128,8 +128,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                     render_layered();
                 }
                 TIMER_CROSSFADE_SCHEDULE => {
-                    arm_crossfade_schedule(hwnd);
-                    render_layered();
+                    tick_antigravity_crossfade(hwnd, false);
                 }
                 _ => {}
             }
@@ -141,6 +140,9 @@ pub(super) unsafe extern "system" fn wnd_proc(
             LRESULT(0)
         }
         WM_APP_USAGE_UPDATED => {
+            if let Some(state) = lock_state().as_mut() {
+                state.antigravity_tile_rect = None;
+            }
             check_theme_change();
             check_language_change();
             render_layered();
@@ -853,7 +855,10 @@ pub(super) unsafe extern "system" fn wnd_proc(
                                     unsafe {
                                         let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
                                     }
+                                    s.antigravity_hovered = false;
                                     s.crossfade_opacity = 1.0;
+                                    s.crossfade_animation = None;
+                                    s.antigravity_tile_rect = None;
                                 }
                             }
                         }
@@ -882,8 +887,13 @@ pub(super) unsafe extern "system" fn wnd_proc(
                                 s.show_antigravity_gemini = enabled;
                                 s.show_antigravity_external = enabled;
                                 if !enabled {
-                                    let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
+                                    unsafe {
+                                        let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
+                                    }
+                                    s.antigravity_hovered = false;
                                     s.crossfade_opacity = 1.0;
+                                    s.crossfade_animation = None;
+                                    s.antigravity_tile_rect = None;
                                 }
                             }
                             dual_mode = s.show_antigravity_gemini

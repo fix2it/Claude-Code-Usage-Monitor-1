@@ -359,25 +359,21 @@ pub(super) fn resolve_objects_for<'a>(
 /// Return the topmost interactive layer at a logical canvas point. Non-
 /// interactive layers intentionally do not block layers beneath them, which
 /// lets visual decoration sit above a larger deliberate hit area.
-/// Whether the point lies inside the rendered object with `object_id`,
-/// regardless of whether that object declares mouse events.
-pub fn point_in_object(
+/// Returns the rendered bounding box `(x, y, width, height)` of `object_id` on the given surface
+/// in canvas logical coordinates (including horizontal surface padding), or `None` if not rendered.
+pub fn object_bounds(
     theme: &ThemeDocument,
     surface_index: usize,
-    x: f64,
-    y: f64,
     data: Option<&AppUsageData>,
     runtime: ThemeRuntime,
     object_id: &str,
-) -> bool {
-    let Some(surface) = theme.surfaces.get(surface_index) else {
-        return false;
-    };
+) -> Option<(f64, f64, f64, f64)> {
+    let surface = theme.surfaces.get(surface_index)?;
     if !surface_should_render(theme, surface_index, data, runtime) {
-        return false;
+        return None;
     }
     let (width, height) = resolve_object_size(surface, data, runtime, &mut Vec::new());
-    let x = x - surface_horizontal_padding(theme, surface_index, runtime) as f64;
+    let padding = surface_horizontal_padding(theme, surface_index, runtime) as f64;
     let canvas = Canvas {
         width,
         width_expression: Some(surface.width.clone()),
@@ -386,21 +382,10 @@ pub fn point_in_object(
         background: surface.background.canvas_paint(),
     };
     let (resolved, _) = resolve_objects_for(surface, &canvas, &surface.children, data, runtime);
-    resolved.into_iter().any(|object| {
-        object.source.id == object_id
-            && object.width > 0.0
-            && object.height > 0.0
-            && point_in_clip(
-                (x, y),
-                ClipRegion {
-                    x: object.x,
-                    y: object.y,
-                    width: object.width,
-                    height: object.height,
-                    rotation: object.rotation,
-                },
-            )
-    })
+    resolved
+        .into_iter()
+        .find(|object| object.source.id == object_id && object.width > 0.0 && object.height > 0.0)
+        .map(|object| (object.x + padding, object.y, object.width, object.height))
 }
 
 pub fn hit_test_mouse_event(

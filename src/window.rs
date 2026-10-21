@@ -101,6 +101,8 @@ struct AppState {
     pub(super) show_antigravity_external: bool,
     crossfade_opacity: f64,
     antigravity_hovered: bool,
+    crossfade_animation: Option<CrossfadeAnimation>,
+    pub(super) antigravity_tile_rect: Option<(f64, f64, f64, f64)>,
     accounts: crate::accounts::AccountSettings,
 
     data: Option<AppUsageData>,
@@ -2521,6 +2523,8 @@ pub fn run() {
                 show_antigravity_external: settings.antigravity_external_enabled(),
                 crossfade_opacity: 1.0,
                 antigravity_hovered: false,
+                crossfade_animation: None,
+                antigravity_tile_rect: None,
                 accounts: settings.accounts.clone(),
                 data: None,
                 poll_interval_ms: settings.poll_interval_ms,
@@ -2695,6 +2699,24 @@ fn render_layered() {
         };
         let surface = &theme.surfaces[surface_index];
         let surface_runtime = theme_runtime_for_surface(&theme, surface_index, runtime);
+        if surface_index == 0 {
+            let needs_rect = lock_state()
+                .as_ref()
+                .map(|s| s.antigravity_tile_rect.is_none())
+                .unwrap_or(false);
+            if needs_rect {
+                let tile_rect = theme_engine::object_bounds(
+                    &theme,
+                    0,
+                    usage_data.as_ref(),
+                    surface_runtime,
+                    mouse::ANTIGRAVITY_HOVER_OBJECT,
+                );
+                if let Some(state) = lock_state().as_mut() {
+                    state.antigravity_tile_rect = tile_rect;
+                }
+            }
+        }
         let nest = surface
             .placement
             .nest
@@ -3298,13 +3320,46 @@ fn check_language_change() {
     }
 }
 
-/// Crossfade length for the hover-driven Gemini ↔ Claude/GPT switch.
-const ANTIGRAVITY_CROSSFADE_MS: f64 = 200.0;
-const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 30;
+const ANTIGRAVITY_CROSSFADE_DURATION_MS: u64 = 70;
+const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 16;
 
-/// One animation step toward the hover target: Gemini (1.0) at rest,
-/// Claude/GPT (0.0) while the cursor is over the Antigravity tile.
-/// Returns the new opacity and whether another tick is needed.
+#[cfg(test)]
+const ANTIGRAVITY_CROSSFADE_MS: f64 = 64.0;
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct CrossfadeAnimation {
+    pub(super) start_opacity: f64,
+    pub(super) target_opacity: f64,
+    pub(super) start_time: std::time::Instant,
+    pub(super) duration: std::time::Duration,
+    pub(super) last_rendered: std::time::Instant,
+}
+
+impl CrossfadeAnimation {
+    pub(super) fn new(start_opacity: f64, target_opacity: f64, duration: std::time::Duration) -> Self {
+        let now = std::time::Instant::now();
+        Self {
+            start_opacity,
+            target_opacity,
+            start_time: now,
+            duration,
+            last_rendered: now,
+        }
+    }
+
+    pub(super) fn current_opacity(&self) -> (f64, bool) {
+        let elapsed = self.start_time.elapsed();
+        if elapsed >= self.duration || self.duration.is_zero() {
+            (self.target_opacity, false)
+        } else {
+            let progress = elapsed.as_secs_f64() / self.duration.as_secs_f64();
+            let opacity = self.start_opacity + (self.target_opacity - self.start_opacity) * progress;
+            (opacity, true)
+        }
+    }
+}
+
+#[cfg(test)]
 fn antigravity_crossfade_step(current: f64, hovered: bool) -> (f64, bool) {
     let target = if hovered { 0.0 } else { 1.0 };
     let step = ANTIGRAVITY_CROSSFADE_TICK_MS as f64 / ANTIGRAVITY_CROSSFADE_MS;
@@ -3316,50 +3371,79 @@ fn antigravity_crossfade_step(current: f64, hovered: bool) -> (f64, bool) {
     (next, next != target)
 }
 
+pub(super) fn tick_antigravity_crossfade(hwnd: HWND, throttle: bool) {
+    let (should_render, still_animating) = {
+        let mut state = lock_state();
+        let Some(state) = state.as_mut() else {
+            return;
+        };
+        let Some(mut anim) = state.crossfade_animation else {
+            return;
+        };
+        let now = std::time::Instant::now();
+        if throttle && now.duration_since(anim.last_rendered) < std::time::Duration::from_millis(15) {
+            return;
+        }
+        let (opacity, more) = anim.current_opacity();
+        state.crossfade_opacity = opacity;
+        anim.last_rendered = now;
+        if more {
+            state.crossfade_animation = Some(anim);
+        } else {
+            state.crossfade_opacity = anim.target_opacity;
+            state.crossfade_animation = None;
+        }
+        (true, more)
+    };
+    if !still_animating {
+        unsafe {
+            let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
+        }
+    }
+    if should_render {
+        render_layered();
+    }
+}
+
 pub(super) fn arm_crossfade_schedule(hwnd: HWND) {
-    let mut state = lock_state();
-    let mut animating = false;
-    if let Some(state) = state.as_mut() {
+    tick_antigravity_crossfade(hwnd, false);
+}
+
+/// Starts the crossfade when the cursor enters or leaves the Antigravity tile.
+pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
+    let mut should_animate = false;
+    {
+        let mut state = lock_state();
+        let Some(state) = state.as_mut() else {
+            return;
+        };
         let dual_mode = state.show_antigravity_gemini
             && state.show_antigravity_external
             && state.providers.contains(ProviderId::Antigravity);
-        if dual_mode {
-            let (opacity, more) =
-                antigravity_crossfade_step(state.crossfade_opacity, state.antigravity_hovered);
-            state.crossfade_opacity = opacity;
-            animating = more;
-        } else {
-            state.crossfade_opacity = 1.0;
+        if state.antigravity_hovered != hovered {
+            state.antigravity_hovered = hovered;
+            if dual_mode {
+                let target = if hovered { 0.0 } else { 1.0 };
+                state.crossfade_animation = Some(CrossfadeAnimation::new(
+                    state.crossfade_opacity,
+                    target,
+                    std::time::Duration::from_millis(ANTIGRAVITY_CROSSFADE_DURATION_MS),
+                ));
+                should_animate = true;
+            }
         }
     }
-    unsafe {
-        if animating {
+    if should_animate {
+        unsafe {
             let _ = SetTimer(
                 Some(hwnd),
                 TIMER_CROSSFADE_SCHEDULE,
                 ANTIGRAVITY_CROSSFADE_TICK_MS,
                 None,
             );
-        } else {
-            let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
         }
+        render_layered();
     }
-}
-
-/// Starts the crossfade when the cursor enters or leaves the Antigravity tile.
-pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
-    {
-        let mut state = lock_state();
-        let Some(state) = state.as_mut() else {
-            return;
-        };
-        if state.antigravity_hovered == hovered {
-            return;
-        }
-        state.antigravity_hovered = hovered;
-    }
-    arm_crossfade_schedule(hwnd);
-    render_layered();
 }
 
 fn reload_external_settings(hwnd: HWND) {
@@ -3398,8 +3482,11 @@ fn reload_external_settings(hwnd: HWND) {
             unsafe {
                 let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
             }
+            state.antigravity_hovered = false;
             state.crossfade_opacity = 1.0;
+            state.crossfade_animation = None;
         }
+        state.antigravity_tile_rect = None;
         update_configured_placement(
             state,
             settings.placement_override,
@@ -4118,8 +4205,21 @@ mod antigravity_crossfade_tests {
             }
         }
         assert_eq!(opacity, 0.0);
-        assert_eq!(ticks, 7);
+        assert_eq!(ticks, 4);
         let (next, more) = antigravity_crossfade_step(0.0, false);
         assert!(next > 0.0 && more);
+    }
+
+    #[test]
+    fn crossfade_animation_interpolates_and_completes() {
+        let anim = super::CrossfadeAnimation::new(1.0, 0.0, std::time::Duration::from_millis(0));
+        let (opacity, more) = anim.current_opacity();
+        assert_eq!(opacity, 0.0);
+        assert!(!more);
+
+        let anim = super::CrossfadeAnimation::new(0.0, 1.0, std::time::Duration::from_secs(10));
+        let (opacity, more) = anim.current_opacity();
+        assert!(opacity < 0.1);
+        assert!(more);
     }
 }
