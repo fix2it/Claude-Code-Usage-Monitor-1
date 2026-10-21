@@ -3477,8 +3477,11 @@ fn compact_fluent_quad_antigravity_dual_and_solo_modes() {
         let runtime_gemini_fade =
             ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Antigravity]))
                 .with_antigravity_pools(true, true, 0.75);
-        let mut context_gemini_fade =
-            DataContext::from_usage_with_runtime(Some(&usage), &Canvas::default(), runtime_gemini_fade);
+        let mut context_gemini_fade = DataContext::from_usage_with_runtime(
+            Some(&usage),
+            &Canvas::default(),
+            runtime_gemini_fade,
+        );
         context_gemini_fade.insert("system.dark", 1.0);
         let find_render_gf = |id: &str| {
             theme.surfaces[0]
@@ -3513,8 +3516,11 @@ fn compact_fluent_quad_antigravity_dual_and_solo_modes() {
         let runtime_ext_fade =
             ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Antigravity]))
                 .with_antigravity_pools(true, true, 0.25);
-        let mut context_ext_fade =
-            DataContext::from_usage_with_runtime(Some(&usage), &Canvas::default(), runtime_ext_fade);
+        let mut context_ext_fade = DataContext::from_usage_with_runtime(
+            Some(&usage),
+            &Canvas::default(),
+            runtime_ext_fade,
+        );
         context_ext_fade.insert("system.dark", 1.0);
         let find_render_ef = |id: &str| {
             theme.surfaces[0]

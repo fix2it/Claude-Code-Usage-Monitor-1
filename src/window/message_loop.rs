@@ -882,6 +882,8 @@ pub(super) unsafe extern "system" fn wnd_proc(
                             let provider = ProviderId::from_native_menu_command_id(id)
                                 .expect("provider menu command was matched above");
                             let changed = s.providers.toggle(provider);
+                            // Tile widths depend on the provider count.
+                            s.antigravity_tile_rect = None;
                             if provider == ProviderId::Antigravity && changed {
                                 let enabled = s.providers.contains(ProviderId::Antigravity);
                                 s.show_antigravity_gemini = enabled;

@@ -1930,6 +1930,7 @@ fn replace_active_theme(state: &mut AppState, loaded: ThemeDocument, path: Optio
         clear_auto_ejection(state);
     }
     state.active_theme = Some(loaded);
+    state.antigravity_tile_rect = None;
     if path.is_some() {
         state.active_theme_path = path;
     }
