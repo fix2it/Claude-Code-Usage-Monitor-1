@@ -3757,11 +3757,16 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
         assert!(matches!(&tick.content, SceneContent::None));
         assert_eq!(tick.parent, gauge.parent);
         assert_eq!(tick.render.0, gauge.render.0);
-        let binding = tick
+        let stripped = tick
             .visibility
             .0
             .strip_prefix("(100) * ")
-            .unwrap()
+            .unwrap();
+        let stripped = stripped
+            .strip_suffix(" * antigravity.gemini.opacity")
+            .or_else(|| stripped.strip_suffix(" * antigravity.external.opacity"))
+            .unwrap_or(stripped);
+        let binding = stripped
             .strip_suffix(".expected_available * display.show_pace")
             .unwrap();
         let LayerBackground::Colour { colour } = &tick.background else {
@@ -3775,6 +3780,8 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
         };
         assert_eq!(colour.color, expected_colour);
         let mut context = DataContext::from_usage(None, &Canvas::default());
+        context.insert("antigravity.gemini.opacity", 1.0);
+        context.insert("antigravity.external.opacity", 1.0);
         for count in 1..=ProviderId::ALL.len() {
             context.insert("providers.count", count as f64);
             let start = evaluate(&gauge.x.0, &context).unwrap();
