@@ -860,6 +860,11 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         SurfaceNest::Taskbar
     };
     let opacity = state.floating_card_opacity.unwrap_or(85);
+    let (gemini_shown, external_shown) = antigravity_shown_pools(
+        state.show_antigravity_gemini,
+        state.show_antigravity_external,
+        state.antigravity_hovered,
+    );
     ThemeRuntime::from_providers(state.providers)
         .with_poll_state(poll_ok, has_error)
         .with_language(state.language)
@@ -867,11 +872,17 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         .with_show_pace(state.show_pace)
         .with_nest(nest)
         .with_floating_card_opacity(opacity)
-        .with_antigravity_pools(
-            state.show_antigravity_gemini,
-            state.show_antigravity_external,
-            state.crossfade_opacity,
-        )
+        .with_antigravity_pools(gemini_shown, external_shown, state.crossfade_opacity)
+}
+
+/// With a single Antigravity pool enabled, hovering the tile shows the other
+/// pool in its place; with both enabled the hover crossfade handles it.
+fn antigravity_shown_pools(gemini: bool, external: bool, hovered: bool) -> (bool, bool) {
+    if hovered && gemini != external {
+        (external, gemini)
+    } else {
+        (gemini, external)
+    }
 }
 
 /// A transient outage can keep presenting the last real reading while its
@@ -3336,7 +3347,11 @@ pub(super) struct CrossfadeAnimation {
 }
 
 impl CrossfadeAnimation {
-    pub(super) fn new(start_opacity: f64, target_opacity: f64, duration: std::time::Duration) -> Self {
+    pub(super) fn new(
+        start_opacity: f64,
+        target_opacity: f64,
+        duration: std::time::Duration,
+    ) -> Self {
         let now = std::time::Instant::now();
         Self {
             start_opacity,
@@ -3353,7 +3368,8 @@ impl CrossfadeAnimation {
             (self.target_opacity, false)
         } else {
             let progress = elapsed.as_secs_f64() / self.duration.as_secs_f64();
-            let opacity = self.start_opacity + (self.target_opacity - self.start_opacity) * progress;
+            let opacity =
+                self.start_opacity + (self.target_opacity - self.start_opacity) * progress;
             (opacity, true)
         }
     }
@@ -3381,7 +3397,8 @@ pub(super) fn tick_antigravity_crossfade(hwnd: HWND, throttle: bool) {
             return;
         };
         let now = std::time::Instant::now();
-        if throttle && now.duration_since(anim.last_rendered) < std::time::Duration::from_millis(15) {
+        if throttle && now.duration_since(anim.last_rendered) < std::time::Duration::from_millis(15)
+        {
             return;
         }
         let (opacity, more) = anim.current_opacity();
@@ -3412,6 +3429,7 @@ pub(super) fn arm_crossfade_schedule(hwnd: HWND) {
 /// Starts the crossfade when the cursor enters or leaves the Antigravity tile.
 pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
     let mut should_animate = false;
+    let mut swapped_single = false;
     {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {
@@ -3422,6 +3440,7 @@ pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
             && state.providers.contains(ProviderId::Antigravity);
         if state.antigravity_hovered != hovered {
             state.antigravity_hovered = hovered;
+            swapped_single = !dual_mode && state.providers.contains(ProviderId::Antigravity);
             if dual_mode {
                 let target = if hovered { 0.0 } else { 1.0 };
                 state.crossfade_animation = Some(CrossfadeAnimation::new(
@@ -3442,6 +3461,8 @@ pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
                 None,
             );
         }
+        render_layered();
+    } else if swapped_single {
         render_layered();
     }
 }
@@ -4189,7 +4210,16 @@ mod credential_watch_worker_tests {
 
 #[cfg(test)]
 mod antigravity_crossfade_tests {
-    use super::antigravity_crossfade_step;
+    use super::{antigravity_crossfade_step, antigravity_shown_pools};
+
+    #[test]
+    fn hover_swaps_a_single_pool_and_leaves_dual_mode_alone() {
+        assert_eq!(antigravity_shown_pools(true, false, false), (true, false));
+        assert_eq!(antigravity_shown_pools(true, false, true), (false, true));
+        assert_eq!(antigravity_shown_pools(false, true, true), (true, false));
+        assert_eq!(antigravity_shown_pools(true, true, true), (true, true));
+        assert_eq!(antigravity_shown_pools(false, false, true), (false, false));
+    }
 
     #[test]
     fn gemini_stays_at_rest_and_hover_fades_to_external_and_back() {

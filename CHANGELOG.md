@@ -9,6 +9,7 @@ changes grouped into Added, Changed, Fixed, and Removed where applicable.
 ### Changed
 
 - Show Antigravity's Gemini usage labels at rest and reveal the Claude/GPT labels while the cursor is over the Antigravity tile, replacing the timed 8 s / 2 s alternation.
+- With only one Antigravity pool enabled, hovering the Antigravity tile temporarily shows the other pool's labels and gauges.
 
 ## [2.20.0] - 2026-10-19
 
