@@ -812,7 +812,6 @@ pub(super) unsafe extern "system" fn wnd_proc(
                 }
                 IDM_PROVIDER_ANTIGRAVITY_GEMINI | IDM_PROVIDER_ANTIGRAVITY_EXTERNAL => {
                     let mut should_reposition = false;
-                    let mut dual_mode = false;
                     {
                         let mut state = lock_state();
                         if let Some(s) = state.as_mut() {
@@ -848,23 +847,20 @@ pub(super) unsafe extern "system" fn wnd_proc(
                                     s.providers.set(ProviderId::Antigravity, true);
                                     should_reposition = true;
                                 }
-                                dual_mode = s.show_antigravity_gemini
-                                    && s.show_antigravity_external
+                                let any_pool = (s.show_antigravity_gemini
+                                    || s.show_antigravity_external)
                                     && s.providers.contains(ProviderId::Antigravity);
-                                if !dual_mode {
+                                s.antigravity_tile_rect = None;
+                                if !any_pool {
                                     unsafe {
                                         let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
                                     }
                                     s.antigravity_hovered = false;
                                     s.crossfade_opacity = 1.0;
                                     s.crossfade_animation = None;
-                                    s.antigravity_tile_rect = None;
                                 }
                             }
                         }
-                    }
-                    if dual_mode {
-                        arm_crossfade_schedule(hwnd);
                     }
                     save_state_settings();
                     if should_reposition {
@@ -875,7 +871,6 @@ pub(super) unsafe extern "system" fn wnd_proc(
                     request_poll(hwnd);
                 }
                 id if ProviderId::from_native_menu_command_id(id).is_some() => {
-                    let mut dual_mode = false;
                     {
                         let mut state = lock_state();
                         if let Some(s) = state.as_mut() {
@@ -898,13 +893,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                                     s.antigravity_tile_rect = None;
                                 }
                             }
-                            dual_mode = s.show_antigravity_gemini
-                                && s.show_antigravity_external
-                                && s.providers.contains(ProviderId::Antigravity);
                         }
-                    }
-                    if dual_mode {
-                        arm_crossfade_schedule(hwnd);
                     }
                     save_state_settings();
                     position_at_taskbar();

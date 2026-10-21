@@ -2595,17 +2595,6 @@ pub fn run() {
         // Initial render using the presenter selected by the surface nest.
         schedule_countdown_timer();
         schedule_clock_timer();
-        let startup_dual_mode = {
-            let state = lock_state();
-            state.as_ref().is_some_and(|s| {
-                s.show_antigravity_gemini
-                    && s.show_antigravity_external
-                    && s.providers.contains(ProviderId::Antigravity)
-            })
-        };
-        if startup_dual_mode {
-            arm_crossfade_schedule(hwnd);
-        }
         render_layered();
 
         if open_dashboard_on_start {
@@ -3324,9 +3313,6 @@ fn check_language_change() {
 const ANTIGRAVITY_CROSSFADE_DURATION_MS: u64 = 70;
 const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 16;
 
-#[cfg(test)]
-const ANTIGRAVITY_CROSSFADE_MS: f64 = 64.0;
-
 #[derive(Clone, Copy, Debug)]
 pub(super) struct CrossfadeAnimation {
     pub(super) start_opacity: f64,
@@ -3365,18 +3351,6 @@ impl CrossfadeAnimation {
     }
 }
 
-#[cfg(test)]
-fn antigravity_crossfade_step(current: f64, hovered: bool) -> (f64, bool) {
-    let target = if hovered { 0.0 } else { 1.0 };
-    let step = ANTIGRAVITY_CROSSFADE_TICK_MS as f64 / ANTIGRAVITY_CROSSFADE_MS;
-    let next = if current < target {
-        (current + step).min(target)
-    } else {
-        (current - step).max(target)
-    };
-    (next, next != target)
-}
-
 pub(super) fn tick_antigravity_crossfade(hwnd: HWND, throttle: bool) {
     let (should_render, still_animating) = {
         let mut state = lock_state();
@@ -3410,10 +3384,6 @@ pub(super) fn tick_antigravity_crossfade(hwnd: HWND, throttle: bool) {
     if should_render {
         render_layered();
     }
-}
-
-pub(super) fn arm_crossfade_schedule(hwnd: HWND) {
-    tick_antigravity_crossfade(hwnd, false);
 }
 
 /// Starts the crossfade when the cursor enters or leaves the Antigravity tile.
@@ -3460,8 +3430,6 @@ fn reload_external_settings(hwnd: HWND) {
     let theme_path = settings.active_theme_path.as_ref().map(PathBuf::from);
     let providers_changed;
     let lock_enabled;
-    let antigravity_changed;
-    let dual_mode;
     {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {
@@ -3471,8 +3439,6 @@ fn reload_external_settings(hwnd: HWND) {
             state.providers != settings.enabled_providers() || state.accounts != settings.accounts;
         let gemini_enabled = settings.antigravity_gemini_enabled();
         let external_enabled = settings.antigravity_external_enabled();
-        antigravity_changed = state.show_antigravity_gemini != gemini_enabled
-            || state.show_antigravity_external != external_enabled;
         state.show_antigravity_gemini = gemini_enabled;
         state.show_antigravity_external = external_enabled;
         state.accounts = settings.accounts.clone();
@@ -3483,10 +3449,9 @@ fn reload_external_settings(hwnd: HWND) {
         state.providers = settings.enabled_providers();
         state.usage_countdown = settings.usage_countdown;
         state.show_pace = settings.show_pace;
-        dual_mode = state.show_antigravity_gemini
-            && state.show_antigravity_external
+        let any_pool = (state.show_antigravity_gemini || state.show_antigravity_external)
             && state.providers.contains(ProviderId::Antigravity);
-        if !dual_mode {
+        if !any_pool {
             unsafe {
                 let _ = KillTimer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
             }
@@ -3505,9 +3470,6 @@ fn reload_external_settings(hwnd: HWND) {
         state.lock_taskbar = settings.lock_taskbar;
         lock_enabled = state.lock_taskbar;
         apply_language_to_state(state, language_override);
-    }
-    if dual_mode && (antigravity_changed || providers_changed) {
-        arm_crossfade_schedule(hwnd);
     }
     unsafe {
         SetTimer(Some(hwnd), TIMER_POLL, settings.poll_interval_ms, None);
@@ -4197,37 +4159,24 @@ mod credential_watch_worker_tests {
 
 #[cfg(test)]
 mod antigravity_crossfade_tests {
-    use super::antigravity_crossfade_step;
-
-    #[test]
-    fn gemini_stays_at_rest_and_hover_fades_to_external_and_back() {
-        assert_eq!(antigravity_crossfade_step(1.0, false), (1.0, false));
-        let mut opacity = 1.0;
-        let mut ticks = 0;
-        loop {
-            let (next, more) = antigravity_crossfade_step(opacity, true);
-            opacity = next;
-            ticks += 1;
-            if !more {
-                break;
-            }
-        }
-        assert_eq!(opacity, 0.0);
-        assert_eq!(ticks, 4);
-        let (next, more) = antigravity_crossfade_step(0.0, false);
-        assert!(next > 0.0 && more);
-    }
+    use super::CrossfadeAnimation;
+    use std::time::Duration;
 
     #[test]
     fn crossfade_animation_interpolates_and_completes() {
-        let anim = super::CrossfadeAnimation::new(1.0, 0.0, std::time::Duration::from_millis(0));
+        let anim = CrossfadeAnimation::new(1.0, 0.0, Duration::from_millis(0));
         let (opacity, more) = anim.current_opacity();
         assert_eq!(opacity, 0.0);
         assert!(!more);
 
-        let anim = super::CrossfadeAnimation::new(0.0, 1.0, std::time::Duration::from_secs(10));
+        let anim = CrossfadeAnimation::new(0.0, 1.0, Duration::from_secs(10));
         let (opacity, more) = anim.current_opacity();
         assert!(opacity < 0.1);
         assert!(more);
+
+        let anim_return = CrossfadeAnimation::new(0.0, 1.0, Duration::from_millis(0));
+        let (opacity, more) = anim_return.current_opacity();
+        assert_eq!(opacity, 1.0);
+        assert!(!more);
     }
 }
