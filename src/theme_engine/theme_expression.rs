@@ -348,7 +348,7 @@ impl Parser<'_> {
                     return Err(format!(
                         "Unsupported escape sequence '\\{}'",
                         escaped as char
-                    ))
+                    ));
                 }
             });
         }

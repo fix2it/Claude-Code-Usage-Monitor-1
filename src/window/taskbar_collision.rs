@@ -2,7 +2,7 @@
 //! MTA thread; neither the UI thread nor the Explorer watchdog waits for them.
 use super::*;
 use windows::Win32::System::Com::{
-    CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
+    CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
 };
 use windows::Win32::UI::Accessibility::*;
 
@@ -519,13 +519,15 @@ mod tests {
         assert!(find_sample(&cache, hwnd, bounds, now).is_some());
         assert!(find_sample(&cache, other, bounds, now).is_none());
         assert!(find_sample(&cache, hwnd, rect(0, 1079, 1920, 1127), now).is_none());
-        assert!(find_sample(
-            &cache,
-            hwnd,
-            bounds,
-            now + MAX_SAMPLE_AGE + Duration::from_millis(1)
-        )
-        .is_none());
+        assert!(
+            find_sample(
+                &cache,
+                hwnd,
+                bounds,
+                now + MAX_SAMPLE_AGE + Duration::from_millis(1)
+            )
+            .is_none()
+        );
         assert!(find_sample(&[], hwnd, bounds, now).is_none());
     }
 

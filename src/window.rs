@@ -4,9 +4,8 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use windows::core::PCWSTR;
 use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
+use windows::Win32::Graphics::Dwm::{DWMWA_EXTENDED_FRAME_BOUNDS, DwmGetWindowAttribute};
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::System::Diagnostics::Debug::IsDebuggerPresent;
 use windows::Win32::System::LibraryLoader::{GetModuleFileNameW, GetModuleHandleW};
@@ -18,14 +17,15 @@ use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
 use windows::Win32::UI::Controls::WM_MOUSELEAVE;
 use windows::Win32::UI::HiDpi::*;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetDoubleClickTime, ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT,
+    GetDoubleClickTime, ReleaseCapture, SetCapture, TME_LEAVE, TRACKMOUSEEVENT, TrackMouseEvent,
 };
 use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::core::PCWSTR;
 
 use crate::app_settings::{
-    self, load_settings, save_settings, LegacyPlacement, PlacementOverride, SettingsFile,
-    POLL_15_MIN, POLL_15_MIN_SECONDS, POLL_1_HOUR, POLL_1_HOUR_SECONDS, POLL_1_MIN,
-    POLL_1_MIN_SECONDS, POLL_5_MIN, POLL_5_MIN_SECONDS,
+    self, LegacyPlacement, POLL_1_HOUR, POLL_1_HOUR_SECONDS, POLL_1_MIN, POLL_1_MIN_SECONDS,
+    POLL_5_MIN, POLL_5_MIN_SECONDS, POLL_15_MIN, POLL_15_MIN_SECONDS, PlacementOverride,
+    SettingsFile, load_settings, save_settings,
 };
 use crate::context_menu::{self, ContextMenuAction, ContextMenuItem, ContextMenuItemKind};
 use crate::diagnose;
@@ -688,94 +688,97 @@ fn hang_recovery_delay(streak: u32) -> Duration {
 /// the UI message loop is lost as well. A dedicated thread checks all native
 /// surface handles and relaunches after the shell has returned.
 fn spawn_taskbar_watchdog() {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(Duration::from_secs(TASKBAR_WATCH_INTERVAL_SECS));
-        let invalid = {
-            let state = lock_state();
-            let Some(state) = state.as_ref() else {
-                continue;
-            };
-            let shell_hosted = theme_with_placement(state, false)
-                .as_ref()
-                .is_some_and(|theme| {
-                    theme.surfaces.iter().any(|surface| {
-                        matches!(
-                            surface
-                                .placement
-                                .nest
-                                .resolve(surface.placement.reference.region),
-                            SurfaceNest::Taskbar | SurfaceNest::Desktop
-                        )
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_secs(TASKBAR_WATCH_INTERVAL_SECS));
+            let invalid = {
+                let state = lock_state();
+                let Some(state) = state.as_ref() else {
+                    continue;
+                };
+                let shell_hosted =
+                    theme_with_placement(state, false)
+                        .as_ref()
+                        .is_some_and(|theme| {
+                            theme.surfaces.iter().any(|surface| {
+                                matches!(
+                                    surface
+                                        .placement
+                                        .nest
+                                        .resolve(surface.placement.reference.region),
+                                    SurfaceNest::Taskbar | SurfaceNest::Desktop
+                                )
+                            })
+                        });
+                if !shell_hosted {
+                    continue;
+                }
+                std::iter::once(state.hwnd)
+                    .chain(state.mirror_hwnds.iter().copied())
+                    .chain(state.desktop_hwnds.iter().flatten().copied())
+                    .any(|window| unsafe {
+                        let hwnd = window.to_hwnd();
+                        if !IsWindow(Some(hwnd)).as_bool() {
+                            return true;
+                        }
+                        // When hosted inside a shell window (like Shell_TrayWnd or Progman),
+                        // Windows does not always destroy cross-process child windows when Explorer restarts.
+                        // If this window has a parent that is now destroyed, flag it as invalid.
+                        match GetParent(hwnd).ok() {
+                            Some(p) if !p.is_invalid() => !IsWindow(Some(p)).as_bool(),
+                            _ => false,
+                        }
                     })
-                });
-            if !shell_hosted {
-                continue;
+            };
+            if invalid && !native_interop::find_taskbars().is_empty() {
+                diagnose::log("watchdog: shell-hosted surface was destroyed -> relaunching");
+                relaunch_self();
             }
-            std::iter::once(state.hwnd)
-                .chain(state.mirror_hwnds.iter().copied())
-                .chain(state.desktop_hwnds.iter().flatten().copied())
-                .any(|window| unsafe {
-                    let hwnd = window.to_hwnd();
-                    if !IsWindow(Some(hwnd)).as_bool() {
-                        return true;
-                    }
-                    // When hosted inside a shell window (like Shell_TrayWnd or Progman),
-                    // Windows does not always destroy cross-process child windows when Explorer restarts.
-                    // If this window has a parent that is now destroyed, flag it as invalid.
-                    match GetParent(hwnd).ok() {
-                        Some(p) if !p.is_invalid() => !IsWindow(Some(p)).as_bool(),
-                        _ => false,
-                    }
-                })
-        };
-        if invalid && !native_interop::find_taskbars().is_empty() {
-            diagnose::log("watchdog: shell-hosted surface was destroyed -> relaunching");
-            relaunch_self();
-        }
 
-        static LAST_WATCHDOG_TRAY_RECT: Mutex<Option<RECT>> = Mutex::new(None);
-        let (reposition_target, current_tray_rect) = {
-            let state = lock_state();
-            if let Some(s) = state.as_ref() {
-                let tray_hwnd = s.tray_notify_hwnd.map(|h| h.to_hwnd());
-                let target_hwnd = s.hwnd.to_hwnd();
-                (
-                    target_hwnd,
-                    tray_hwnd.and_then(native_interop::get_window_rect_safe),
-                )
-            } else {
-                (HWND::default(), None)
+            static LAST_WATCHDOG_TRAY_RECT: Mutex<Option<RECT>> = Mutex::new(None);
+            let (reposition_target, current_tray_rect) = {
+                let state = lock_state();
+                if let Some(s) = state.as_ref() {
+                    let tray_hwnd = s.tray_notify_hwnd.map(|h| h.to_hwnd());
+                    let target_hwnd = s.hwnd.to_hwnd();
+                    (
+                        target_hwnd,
+                        tray_hwnd.and_then(native_interop::get_window_rect_safe),
+                    )
+                } else {
+                    (HWND::default(), None)
+                }
+            };
+            if !reposition_target.is_invalid() && current_tray_rect.is_some() {
+                let mut last_rect = LAST_WATCHDOG_TRAY_RECT
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                if rect_changed(*last_rect, current_tray_rect) {
+                    *last_rect = current_tray_rect;
+                    unsafe {
+                        let _ = PostMessageW(
+                            Some(reposition_target),
+                            native_interop::WM_APP_TRAY_REPOSITION,
+                            WPARAM(0),
+                            LPARAM(0),
+                        );
+                    }
+                }
             }
-        };
-        if !reposition_target.is_invalid() && current_tray_rect.is_some() {
-            let mut last_rect = LAST_WATCHDOG_TRAY_RECT
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            if rect_changed(*last_rect, current_tray_rect) {
-                *last_rect = current_tray_rect;
+
+            let collision_action = lock_state().as_ref().and_then(|state| {
+                taskbar_collision_action(state).map(|action| (state.hwnd.to_hwnd(), action))
+            });
+
+            if let Some((target_hwnd, action)) = collision_action {
                 unsafe {
                     let _ = PostMessageW(
-                        Some(reposition_target),
-                        native_interop::WM_APP_TRAY_REPOSITION,
-                        WPARAM(0),
+                        Some(target_hwnd),
+                        native_interop::WM_APP_TASKBAR_COLLISION,
+                        WPARAM(action),
                         LPARAM(0),
                     );
                 }
-            }
-        }
-
-        let collision_action = lock_state().as_ref().and_then(|state| {
-            taskbar_collision_action(state).map(|action| (state.hwnd.to_hwnd(), action))
-        });
-
-        if let Some((target_hwnd, action)) = collision_action {
-            unsafe {
-                let _ = PostMessageW(
-                    Some(target_hwnd),
-                    native_interop::WM_APP_TASKBAR_COLLISION,
-                    WPARAM(action),
-                    LPARAM(0),
-                );
             }
         }
     });
@@ -860,11 +863,6 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         SurfaceNest::Taskbar
     };
     let opacity = state.floating_card_opacity.unwrap_or(85);
-    let (gemini_shown, external_shown) = antigravity_shown_pools(
-        state.show_antigravity_gemini,
-        state.show_antigravity_external,
-        state.antigravity_hovered,
-    );
     ThemeRuntime::from_providers(state.providers)
         .with_poll_state(poll_ok, has_error)
         .with_language(state.language)
@@ -872,17 +870,11 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         .with_show_pace(state.show_pace)
         .with_nest(nest)
         .with_floating_card_opacity(opacity)
-        .with_antigravity_pools(gemini_shown, external_shown, state.crossfade_opacity)
-}
-
-/// With a single Antigravity pool enabled, hovering the tile shows the other
-/// pool in its place; with both enabled the hover crossfade handles it.
-fn antigravity_shown_pools(gemini: bool, external: bool, hovered: bool) -> (bool, bool) {
-    if hovered && gemini != external {
-        (external, gemini)
-    } else {
-        (gemini, external)
-    }
+        .with_antigravity_pools(
+            state.show_antigravity_gemini,
+            state.show_antigravity_external,
+            state.crossfade_opacity,
+        )
 }
 
 /// A transient outage can keep presenting the last real reading while its
@@ -3429,19 +3421,18 @@ pub(super) fn arm_crossfade_schedule(hwnd: HWND) {
 /// Starts the crossfade when the cursor enters or leaves the Antigravity tile.
 pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
     let mut should_animate = false;
-    let mut swapped_single = false;
     {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {
             return;
         };
-        let dual_mode = state.show_antigravity_gemini
-            && state.show_antigravity_external
+        // Dual mode fades Gemini to Claude/GPT; a single pool fades to the
+        // hidden one.
+        let any_pool = (state.show_antigravity_gemini || state.show_antigravity_external)
             && state.providers.contains(ProviderId::Antigravity);
         if state.antigravity_hovered != hovered {
             state.antigravity_hovered = hovered;
-            swapped_single = !dual_mode && state.providers.contains(ProviderId::Antigravity);
-            if dual_mode {
+            if any_pool {
                 let target = if hovered { 0.0 } else { 1.0 };
                 state.crossfade_animation = Some(CrossfadeAnimation::new(
                     state.crossfade_opacity,
@@ -3461,8 +3452,6 @@ pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
                 None,
             );
         }
-        render_layered();
-    } else if swapped_single {
         render_layered();
     }
 }
@@ -4033,13 +4022,15 @@ mod tray_usage_summary_tests {
             let lines = tray_error_lines(None, Some(failure), providers, LanguageId::English);
             assert_eq!(lines.len(), 1);
             assert!(lines[0].contains(expected), "{:?}", lines);
-            assert!(tray_error_lines(
-                None,
-                Some(failure),
-                ProviderSet::from_enabled([ProviderId::Codex]),
-                LanguageId::English
-            )
-            .is_empty());
+            assert!(
+                tray_error_lines(
+                    None,
+                    Some(failure),
+                    ProviderSet::from_enabled([ProviderId::Codex]),
+                    LanguageId::English
+                )
+                .is_empty()
+            );
         }
         assert!(tray_error_lines(None, None, providers, LanguageId::English).is_empty());
         let mut data = AppUsageData::default();
@@ -4196,9 +4187,11 @@ mod credential_watch_worker_tests {
             started_rx.recv_timeout(Duration::from_secs(5)).unwrap();
             // A second timer tick cannot acquire the worker while discovery is
             // blocked, but an explicit refresh can queue for that worker.
-            assert!(in_flight
-                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-                .is_err());
+            assert!(
+                in_flight
+                    .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                    .is_err()
+            );
             pending.store(true, Ordering::Release);
             resume_tx.send(()).unwrap();
             assert_eq!(worker.join().unwrap(), [true, false]);
@@ -4210,16 +4203,7 @@ mod credential_watch_worker_tests {
 
 #[cfg(test)]
 mod antigravity_crossfade_tests {
-    use super::{antigravity_crossfade_step, antigravity_shown_pools};
-
-    #[test]
-    fn hover_swaps_a_single_pool_and_leaves_dual_mode_alone() {
-        assert_eq!(antigravity_shown_pools(true, false, false), (true, false));
-        assert_eq!(antigravity_shown_pools(true, false, true), (false, true));
-        assert_eq!(antigravity_shown_pools(false, true, true), (true, false));
-        assert_eq!(antigravity_shown_pools(true, true, true), (true, true));
-        assert_eq!(antigravity_shown_pools(false, false, true), (false, false));
-    }
+    use super::antigravity_crossfade_step;
 
     #[test]
     fn gemini_stays_at_rest_and_hover_fades_to_external_and_back() {

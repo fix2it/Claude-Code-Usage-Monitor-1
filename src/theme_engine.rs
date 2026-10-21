@@ -10,13 +10,13 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use windows::core::PCWSTR;
 use windows::Win32::Foundation::{COLORREF, RECT};
 use windows::Win32::Graphics::Gdi::*;
+use windows::core::PCWSTR;
 
 use crate::localization::LanguageId;
 use crate::models::AppUsageData;
-use crate::providers::{ProviderId, ProviderSet, PROVIDER_DESCRIPTORS};
+use crate::providers::{PROVIDER_DESCRIPTORS, ProviderId, ProviderSet};
 
 pub const THEME_SCHEMA_VERSION: u32 = 1;
 pub const CLASSIC_THEME_ID: &str = "classic-usage-widget";
@@ -552,7 +552,7 @@ pub fn parse_mouse_actions(source: &str) -> Result<Vec<MouseAction>, String> {
                 });
             }
             "show_context_menu" => {
-                return Err("show_context_menu expects zero or one quoted menu id or name".into())
+                return Err("show_context_menu expects zero or one quoted menu id or name".into());
             }
             "set" | "increase" | "decrease" => {
                 let (target, property, value) = match args.as_slice() {
@@ -565,11 +565,11 @@ pub fn parse_mouse_actions(source: &str) -> Result<Vec<MouseAction>, String> {
                         parse_action_property(property)?,
                         value.as_str(),
                     ),
-                    _ => return Err(
-                        format!(
+                    _ => {
+                        return Err(format!(
                             "{name} expects {name}(target.property, value) or {name}(target, property, value)"
-                        ),
-                    ),
+                        ));
+                    }
                 };
                 if value.trim().is_empty() {
                     return Err(format!("{name} requires a value expression"));
@@ -609,7 +609,7 @@ pub fn parse_mouse_actions(source: &str) -> Result<Vec<MouseAction>, String> {
                     _ => {
                         return Err(format!(
                             "{name} expects {name}(target.property) or {name}(target, property)"
-                        ))
+                        ));
                     }
                 };
                 if name == "toggle" {
@@ -1576,6 +1576,16 @@ impl DataContext {
             (0.5 - crossfade) * 2.0
         } else {
             0.0
+        };
+        // crossfade 1.0 shows the primary pool: Gemini in dual mode, otherwise
+        // the single enabled pool; hover fades toward the other one.
+        let (gemini_opacity, external_opacity) = match (
+            runtime.antigravity_gemini_enabled,
+            runtime.antigravity_external_enabled,
+        ) {
+            (false, true) => (external_opacity, gemini_opacity),
+            (false, false) => (0.0, 0.0),
+            _ => (gemini_opacity, external_opacity),
         };
         context.insert("antigravity.gemini.opacity", gemini_opacity);
         context.insert("antigravity.external.opacity", external_opacity);

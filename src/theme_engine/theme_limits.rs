@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::{limit_slug, UsageData, UsageLimit};
+use crate::models::{UsageData, UsageLimit, limit_slug};
 
 impl DataContext {
     pub(super) fn insert_limits(&mut self, name: &str, usage: Option<&UsageData>, countdown: bool) {
@@ -258,9 +258,11 @@ mod tests {
                 .unwrap()
                 > 7100.0
         );
-        assert!(context
-            .limit_variables()
-            .contains(&"accounts.claude.work.limits.weekly_scoped_fable.label"));
+        assert!(
+            context
+                .limit_variables()
+                .contains(&"accounts.claude.work.limits.weekly_scoped_fable.label")
+        );
 
         for data in [None, Some(&AppUsageData::default())] {
             let context = DataContext::from_usage_with_runtime(

@@ -422,9 +422,11 @@ fn expressions_support_data_math_and_functions() {
     assert_eq!(evaluate("get(this.gap)", &context).unwrap(), 4.0);
     assert_eq!(evaluate("get(self, gap)", &context).unwrap(), 4.0);
     assert_eq!(evaluate("get(parent, width)", &context).unwrap(), 320.0);
-    assert!(evaluate("get(this, missing)", &context)
-        .unwrap_err()
-        .contains("this.missing"));
+    assert!(
+        evaluate("get(this, missing)", &context)
+            .unwrap_err()
+            .contains("this.missing")
+    );
     let context = DataContext::from_usage(None, &Canvas::default());
     assert_eq!(evaluate("true", &context).unwrap(), 1.0);
     assert_eq!(evaluate("false", &context).unwrap(), 0.0);
@@ -561,11 +563,13 @@ fn text_templates_allow_if_to_return_quoted_strings() {
         format_template(r#"{if(weekday == 1, "Day: 1", "Day: 2")}"#, &context,),
         "Day: 1"
     );
-    assert!(validate_template(
-        r#"{if(weekday == 0, "Mo", if(weekday == 1, "Tu", "We"))}"#,
-        &context,
-    )
-    .is_empty());
+    assert!(
+        validate_template(
+            r#"{if(weekday == 0, "Mo", if(weekday == 1, "Tu", "We"))}"#,
+            &context,
+        )
+        .is_empty()
+    );
 }
 
 #[test]
@@ -838,10 +842,12 @@ fn built_in_classic_adds_a_fable_column_when_the_limit_is_available() {
         ),
         (310, 46)
     );
-    assert!(theme.surfaces[0]
-        .children
-        .iter()
-        .any(|object| object.id == "fable-provider"));
+    assert!(
+        theme.surfaces[0]
+            .children
+            .iter()
+            .any(|object| object.id == "fable-provider")
+    );
 }
 
 #[test]
@@ -954,12 +960,14 @@ fn starter_theme_round_trips_and_validates() {
         segments,
         [vec![10; 5 * 2 * 2 + 2 * 2 + 3 * 2], vec![8; 2]].concat()
     );
-    assert!(theme.surfaces[0]
-        .children
-        .iter()
-        .any(|object| object.id == "provider-row"
-            && object.layout == ChildLayout::Row
-            && matches!(object.content, SceneContent::None)));
+    assert!(
+        theme.surfaces[0]
+            .children
+            .iter()
+            .any(|object| object.id == "provider-row"
+                && object.layout == ChildLayout::Row
+                && matches!(object.content, SceneContent::None))
+    );
     let json = serde_json::to_string(&theme).unwrap();
     assert!(json.contains("\"render\""));
     assert!(json.contains("\"visibility\""));
@@ -993,9 +1001,11 @@ fn schema_only_serializes_placement_fields_for_the_relevant_level() {
     assert!(root["placement"].get("anchor").is_none());
     assert!(root["placement"].get("monitor").is_none());
     assert!(root["placement"].get("duplicate_on_all_monitors").is_none());
-    assert!(root["placement"]
-        .get("click_through_transparent_pixels")
-        .is_none());
+    assert!(
+        root["placement"]
+            .get("click_through_transparent_pixels")
+            .is_none()
+    );
     assert!(root.get("clip_children").is_none());
     let child = &root["children"][0];
     assert!(child.get("placement").is_none());
@@ -1046,10 +1056,12 @@ fn theme_schema_does_not_serialize_descriptions() {
         "surfaces": serde_json::to_value(ThemeDocument::starter().surfaces).unwrap(),
     });
     let theme: ThemeDocument = serde_json::from_value(source).unwrap();
-    assert!(serde_json::to_value(theme)
-        .unwrap()
-        .get("description")
-        .is_none());
+    assert!(
+        serde_json::to_value(theme)
+            .unwrap()
+            .get("description")
+            .is_none()
+    );
 }
 
 #[test]
@@ -1346,10 +1358,12 @@ fn compact_fluent_quad_adds_a_fable_column_when_the_limit_is_available() {
         resolve_surface_size(&theme, 0, Some(&usage), runtime),
         (base_width + 96, height)
     );
-    assert!(theme.surfaces[0]
-        .children
-        .iter()
-        .any(|object| object.id == "fable-provider"));
+    assert!(
+        theme.surfaces[0]
+            .children
+            .iter()
+            .any(|object| object.id == "fable-provider")
+    );
 }
 
 #[test]
@@ -1726,10 +1740,12 @@ fn legacy_padding_is_ignored_and_offsets_control_child_position() {
         "padding": { "top": "9", "right": "8", "bottom": "7", "left": "6" }
     }))
     .unwrap();
-    assert!(serde_json::to_value(legacy)
-        .unwrap()
-        .get("padding")
-        .is_none());
+    assert!(
+        serde_json::to_value(legacy)
+            .unwrap()
+            .get("padding")
+            .is_none()
+    );
 }
 
 #[test]
@@ -1916,14 +1932,10 @@ fn starter_adapts_width_segments_and_collapsed_provider_rows() {
             .map(|bounds| bounds.0),
         Some(41.0)
     );
-    assert!(resolve_object_bounds_with_runtime(
-        &theme,
-        0,
-        index("claude-provider"),
-        None,
-        codex_only,
-    )
-    .is_none());
+    assert!(
+        resolve_object_bounds_with_runtime(&theme, 0, index("claude-provider"), None, codex_only,)
+            .is_none()
+    );
 
     let claude_and_antigravity = ThemeRuntime::new(true, false, true);
     assert_eq!(
@@ -1964,9 +1976,11 @@ fn starter_has_a_taskbar_widget_and_provider_tray_icons() {
         ReferenceRegion::SystemTray
     );
     assert_eq!(theme.surfaces.len(), 8);
-    assert!(theme.surfaces[1..]
-        .iter()
-        .all(|surface| surface.placement.nest == SurfaceNest::TrayIcon));
+    assert!(
+        theme.surfaces[1..]
+            .iter()
+            .all(|surface| surface.placement.nest == SurfaceNest::TrayIcon)
+    );
     assert_eq!(
         theme.surfaces[0].mouse_events.as_ref().unwrap().right_click,
         "show_context_menu(\"classic-v1\")"
@@ -1988,9 +2002,11 @@ fn migrated_theme_is_writable_and_only_moves_the_taskbar_surface() {
     assert_eq!(theme.surfaces[0].placement.reference.display, 2);
     assert_eq!(theme.surfaces[0].placement.offset_x, -96);
     assert_eq!(theme.surfaces[0].render.0, "0");
-    assert!(theme.surfaces[1..]
-        .iter()
-        .all(|surface| surface.placement.nest == SurfaceNest::TrayIcon));
+    assert!(
+        theme.surfaces[1..]
+            .iter()
+            .all(|surface| surface.placement.nest == SurfaceNest::TrayIcon)
+    );
     assert!(theme.validate().is_empty());
 }
 
@@ -2021,9 +2037,11 @@ fn built_in_themes_are_valid_and_cannot_be_saved_as_editable_themes() {
     assert_eq!(BUILTIN_THEME_SOURCES[0].0, CLASSIC_THEME_ID);
     assert_eq!(BUILTIN_THEME_SOURCES[1].0, COMPACT_FLUENT_QUAD_THEME_ID);
     assert_eq!(BUILTIN_THEME_SOURCES[2].0, CLASSIC_VERTICAL_THEME_ID);
-    assert!(REMOVED_BUILTIN_THEME_IDS
-        .iter()
-        .all(|id| !is_builtin_theme_id(id)));
+    assert!(
+        REMOVED_BUILTIN_THEME_IDS
+            .iter()
+            .all(|id| !is_builtin_theme_id(id))
+    );
     let mut ids = std::collections::HashSet::new();
     for (expected_id, source) in BUILTIN_THEME_SOURCES {
         let mut theme: ThemeDocument = serde_json::from_str(source).unwrap();
@@ -2374,14 +2392,18 @@ fn theme_deletion_is_limited_to_managed_writable_themes() {
     let managed = themes_directory().join("deletable-theme.json");
     assert!(is_managed_theme_path(&managed));
     assert!(!is_managed_theme_path(Path::new("external-theme.json")));
-    assert!(delete_theme(Path::new("external-theme.json"))
-        .unwrap_err()
-        .contains("Theme Studio"));
+    assert!(
+        delete_theme(Path::new("external-theme.json"))
+            .unwrap_err()
+            .contains("Theme Studio")
+    );
 
     let classic = ensure_starter_theme().unwrap();
-    assert!(delete_theme(&classic)
-        .unwrap_err()
-        .contains("cannot be deleted"));
+    assert!(
+        delete_theme(&classic)
+            .unwrap_err()
+            .contains("cannot be deleted")
+    );
     assert!(classic.exists());
 }
 
@@ -2436,10 +2458,12 @@ fn unsupported_theme_schemas_are_rejected_instead_of_migrated() {
     theme.schema_version = THEME_SCHEMA_VERSION + 1;
     theme.prepare_runtime();
     assert_eq!(theme.schema_version, THEME_SCHEMA_VERSION + 1);
-    assert!(theme
-        .validate()
-        .iter()
-        .any(|error| error.contains("not supported")));
+    assert!(
+        theme
+            .validate()
+            .iter()
+            .any(|error| error.contains("not supported"))
+    );
 }
 
 #[test]
@@ -2458,9 +2482,11 @@ fn mouse_action_parser_preserves_nested_value_expressions() {
     ));
     assert!(matches!(actions[5], MouseAction::Increase { .. }));
     assert!(matches!(actions[6], MouseAction::Decrease { .. }));
-    assert!(parse_mouse_actions("increase(self.render, 1)")
-        .unwrap_err()
-        .contains("numeric property"));
+    assert!(
+        parse_mouse_actions("increase(self.render, 1)")
+            .unwrap_err()
+            .contains("numeric property")
+    );
     assert!(matches!(
         parse_mouse_actions("show_context_menu(\"My Menu\")")
             .unwrap()
@@ -2473,9 +2499,11 @@ fn mouse_action_parser_preserves_nested_value_expressions() {
             .as_slice(),
         [MouseAction::OpenUrl { url }] if url == "https://example.com/usage"
     ));
-    assert!(parse_mouse_actions("open_url(\"file:///temp\")")
-        .unwrap_err()
-        .contains("http:// or https://"));
+    assert!(
+        parse_mouse_actions("open_url(\"file:///temp\")")
+            .unwrap_err()
+            .contains("http:// or https://")
+    );
 }
 
 #[test]
@@ -3368,6 +3396,49 @@ fn compact_fluent_quad_antigravity_dual_and_solo_modes() {
         assert!(!find_render("antigravity-session-external-value-dark"));
     }
 
+    // 1b. Solo Gemini while hovered: the hidden external pool fades in
+    {
+        let runtime =
+            ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Antigravity]))
+                .with_antigravity_pools(true, false, 0.0);
+        let mut context =
+            DataContext::from_usage_with_runtime(Some(&usage), &Canvas::default(), runtime);
+        context.insert("system.dark", 1.0);
+        let find_render = |id: &str| {
+            theme.surfaces[0]
+                .children
+                .iter()
+                .find(|o| o.id == id)
+                .map(|o| evaluate(&o.render.0, &context).unwrap() != 0.0)
+                .unwrap_or(false)
+        };
+        assert!(!find_render("antigravity-session-gemini-solo-dark"));
+        assert!(find_render("antigravity-session-external-solo-dark"));
+        assert!(!find_render("antigravity-session-external-dual-dark"));
+        assert!(find_render("antigravity-session-external-value-dark"));
+        assert_eq!(
+            evaluate("antigravity.external.opacity", &context).unwrap(),
+            1.0
+        );
+    }
+
+    // 1c. Solo External while hovered: Gemini fades in
+    {
+        let runtime =
+            ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Antigravity]))
+                .with_antigravity_pools(false, true, 0.0);
+        let context =
+            DataContext::from_usage_with_runtime(Some(&usage), &Canvas::default(), runtime);
+        assert_eq!(
+            evaluate("antigravity.gemini.opacity", &context).unwrap(),
+            1.0
+        );
+        assert_eq!(
+            evaluate("antigravity.external.opacity", &context).unwrap(),
+            0.0
+        );
+    }
+
     // 2. Solo External
     {
         let runtime =
@@ -3434,8 +3505,11 @@ fn compact_fluent_quad_antigravity_dual_and_solo_modes() {
         let runtime_gemini_fade =
             ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Antigravity]))
                 .with_antigravity_pools(true, true, 0.75);
-        let mut context_gemini_fade =
-            DataContext::from_usage_with_runtime(Some(&usage), &Canvas::default(), runtime_gemini_fade);
+        let mut context_gemini_fade = DataContext::from_usage_with_runtime(
+            Some(&usage),
+            &Canvas::default(),
+            runtime_gemini_fade,
+        );
         context_gemini_fade.insert("system.dark", 1.0);
         let find_render_gf = |id: &str| {
             theme.surfaces[0]
@@ -3470,8 +3544,11 @@ fn compact_fluent_quad_antigravity_dual_and_solo_modes() {
         let runtime_ext_fade =
             ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Antigravity]))
                 .with_antigravity_pools(true, true, 0.25);
-        let mut context_ext_fade =
-            DataContext::from_usage_with_runtime(Some(&usage), &Canvas::default(), runtime_ext_fade);
+        let mut context_ext_fade = DataContext::from_usage_with_runtime(
+            Some(&usage),
+            &Canvas::default(),
+            runtime_ext_fade,
+        );
         context_ext_fade.insert("system.dark", 1.0);
         let find_render_ef = |id: &str| {
             theme.surfaces[0]
@@ -3691,9 +3768,11 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
     assert!(theme.validate().is_empty(), "{:?}", theme.validate());
     let children = &theme.surfaces[0].children;
     for window in ["session", "weekly"] {
-        assert!(children
-            .iter()
-            .any(|object| object.id == format!("claude-{window}-segments-dark-pace")));
+        assert!(
+            children
+                .iter()
+                .any(|object| object.id == format!("claude-{window}-segments-dark-pace"))
+        );
     }
     let ticks = children
         .iter()
