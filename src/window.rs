@@ -4,8 +4,9 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use windows::core::PCWSTR;
 use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Dwm::{DWMWA_EXTENDED_FRAME_BOUNDS, DwmGetWindowAttribute};
+use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::System::Diagnostics::Debug::IsDebuggerPresent;
 use windows::Win32::System::LibraryLoader::{GetModuleFileNameW, GetModuleHandleW};
@@ -17,15 +18,14 @@ use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
 use windows::Win32::UI::Controls::WM_MOUSELEAVE;
 use windows::Win32::UI::HiDpi::*;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetDoubleClickTime, ReleaseCapture, SetCapture, TME_LEAVE, TRACKMOUSEEVENT, TrackMouseEvent,
+    GetDoubleClickTime, ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT,
 };
 use windows::Win32::UI::WindowsAndMessaging::*;
-use windows::core::PCWSTR;
 
 use crate::app_settings::{
-    self, LegacyPlacement, POLL_1_HOUR, POLL_1_HOUR_SECONDS, POLL_1_MIN, POLL_1_MIN_SECONDS,
-    POLL_5_MIN, POLL_5_MIN_SECONDS, POLL_15_MIN, POLL_15_MIN_SECONDS, PlacementOverride,
-    SettingsFile, load_settings, save_settings,
+    self, load_settings, save_settings, LegacyPlacement, PlacementOverride, SettingsFile,
+    POLL_15_MIN, POLL_15_MIN_SECONDS, POLL_1_HOUR, POLL_1_HOUR_SECONDS, POLL_1_MIN,
+    POLL_1_MIN_SECONDS, POLL_5_MIN, POLL_5_MIN_SECONDS,
 };
 use crate::context_menu::{self, ContextMenuAction, ContextMenuItem, ContextMenuItemKind};
 use crate::diagnose;
@@ -688,97 +688,94 @@ fn hang_recovery_delay(streak: u32) -> Duration {
 /// the UI message loop is lost as well. A dedicated thread checks all native
 /// surface handles and relaunches after the shell has returned.
 fn spawn_taskbar_watchdog() {
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(Duration::from_secs(TASKBAR_WATCH_INTERVAL_SECS));
-            let invalid = {
-                let state = lock_state();
-                let Some(state) = state.as_ref() else {
-                    continue;
-                };
-                let shell_hosted =
-                    theme_with_placement(state, false)
-                        .as_ref()
-                        .is_some_and(|theme| {
-                            theme.surfaces.iter().any(|surface| {
-                                matches!(
-                                    surface
-                                        .placement
-                                        .nest
-                                        .resolve(surface.placement.reference.region),
-                                    SurfaceNest::Taskbar | SurfaceNest::Desktop
-                                )
-                            })
-                        });
-                if !shell_hosted {
-                    continue;
-                }
-                std::iter::once(state.hwnd)
-                    .chain(state.mirror_hwnds.iter().copied())
-                    .chain(state.desktop_hwnds.iter().flatten().copied())
-                    .any(|window| unsafe {
-                        let hwnd = window.to_hwnd();
-                        if !IsWindow(Some(hwnd)).as_bool() {
-                            return true;
-                        }
-                        // When hosted inside a shell window (like Shell_TrayWnd or Progman),
-                        // Windows does not always destroy cross-process child windows when Explorer restarts.
-                        // If this window has a parent that is now destroyed, flag it as invalid.
-                        match GetParent(hwnd).ok() {
-                            Some(p) if !p.is_invalid() => !IsWindow(Some(p)).as_bool(),
-                            _ => false,
-                        }
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(TASKBAR_WATCH_INTERVAL_SECS));
+        let invalid = {
+            let state = lock_state();
+            let Some(state) = state.as_ref() else {
+                continue;
+            };
+            let shell_hosted = theme_with_placement(state, false)
+                .as_ref()
+                .is_some_and(|theme| {
+                    theme.surfaces.iter().any(|surface| {
+                        matches!(
+                            surface
+                                .placement
+                                .nest
+                                .resolve(surface.placement.reference.region),
+                            SurfaceNest::Taskbar | SurfaceNest::Desktop
+                        )
                     })
-            };
-            if invalid && !native_interop::find_taskbars().is_empty() {
-                diagnose::log("watchdog: shell-hosted surface was destroyed -> relaunching");
-                relaunch_self();
+                });
+            if !shell_hosted {
+                continue;
             }
-
-            static LAST_WATCHDOG_TRAY_RECT: Mutex<Option<RECT>> = Mutex::new(None);
-            let (reposition_target, current_tray_rect) = {
-                let state = lock_state();
-                if let Some(s) = state.as_ref() {
-                    let tray_hwnd = s.tray_notify_hwnd.map(|h| h.to_hwnd());
-                    let target_hwnd = s.hwnd.to_hwnd();
-                    (
-                        target_hwnd,
-                        tray_hwnd.and_then(native_interop::get_window_rect_safe),
-                    )
-                } else {
-                    (HWND::default(), None)
-                }
-            };
-            if !reposition_target.is_invalid() && current_tray_rect.is_some() {
-                let mut last_rect = LAST_WATCHDOG_TRAY_RECT
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner());
-                if rect_changed(*last_rect, current_tray_rect) {
-                    *last_rect = current_tray_rect;
-                    unsafe {
-                        let _ = PostMessageW(
-                            Some(reposition_target),
-                            native_interop::WM_APP_TRAY_REPOSITION,
-                            WPARAM(0),
-                            LPARAM(0),
-                        );
+            std::iter::once(state.hwnd)
+                .chain(state.mirror_hwnds.iter().copied())
+                .chain(state.desktop_hwnds.iter().flatten().copied())
+                .any(|window| unsafe {
+                    let hwnd = window.to_hwnd();
+                    if !IsWindow(Some(hwnd)).as_bool() {
+                        return true;
                     }
-                }
+                    // When hosted inside a shell window (like Shell_TrayWnd or Progman),
+                    // Windows does not always destroy cross-process child windows when Explorer restarts.
+                    // If this window has a parent that is now destroyed, flag it as invalid.
+                    match GetParent(hwnd).ok() {
+                        Some(p) if !p.is_invalid() => !IsWindow(Some(p)).as_bool(),
+                        _ => false,
+                    }
+                })
+        };
+        if invalid && !native_interop::find_taskbars().is_empty() {
+            diagnose::log("watchdog: shell-hosted surface was destroyed -> relaunching");
+            relaunch_self();
+        }
+
+        static LAST_WATCHDOG_TRAY_RECT: Mutex<Option<RECT>> = Mutex::new(None);
+        let (reposition_target, current_tray_rect) = {
+            let state = lock_state();
+            if let Some(s) = state.as_ref() {
+                let tray_hwnd = s.tray_notify_hwnd.map(|h| h.to_hwnd());
+                let target_hwnd = s.hwnd.to_hwnd();
+                (
+                    target_hwnd,
+                    tray_hwnd.and_then(native_interop::get_window_rect_safe),
+                )
+            } else {
+                (HWND::default(), None)
             }
-
-            let collision_action = lock_state().as_ref().and_then(|state| {
-                taskbar_collision_action(state).map(|action| (state.hwnd.to_hwnd(), action))
-            });
-
-            if let Some((target_hwnd, action)) = collision_action {
+        };
+        if !reposition_target.is_invalid() && current_tray_rect.is_some() {
+            let mut last_rect = LAST_WATCHDOG_TRAY_RECT
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if rect_changed(*last_rect, current_tray_rect) {
+                *last_rect = current_tray_rect;
                 unsafe {
                     let _ = PostMessageW(
-                        Some(target_hwnd),
-                        native_interop::WM_APP_TASKBAR_COLLISION,
-                        WPARAM(action),
+                        Some(reposition_target),
+                        native_interop::WM_APP_TRAY_REPOSITION,
+                        WPARAM(0),
                         LPARAM(0),
                     );
                 }
+            }
+        }
+
+        let collision_action = lock_state().as_ref().and_then(|state| {
+            taskbar_collision_action(state).map(|action| (state.hwnd.to_hwnd(), action))
+        });
+
+        if let Some((target_hwnd, action)) = collision_action {
+            unsafe {
+                let _ = PostMessageW(
+                    Some(target_hwnd),
+                    native_interop::WM_APP_TASKBAR_COLLISION,
+                    WPARAM(action),
+                    LPARAM(0),
+                );
             }
         }
     });
@@ -4022,15 +4019,13 @@ mod tray_usage_summary_tests {
             let lines = tray_error_lines(None, Some(failure), providers, LanguageId::English);
             assert_eq!(lines.len(), 1);
             assert!(lines[0].contains(expected), "{:?}", lines);
-            assert!(
-                tray_error_lines(
-                    None,
-                    Some(failure),
-                    ProviderSet::from_enabled([ProviderId::Codex]),
-                    LanguageId::English
-                )
-                .is_empty()
-            );
+            assert!(tray_error_lines(
+                None,
+                Some(failure),
+                ProviderSet::from_enabled([ProviderId::Codex]),
+                LanguageId::English
+            )
+            .is_empty());
         }
         assert!(tray_error_lines(None, None, providers, LanguageId::English).is_empty());
         let mut data = AppUsageData::default();
@@ -4187,11 +4182,9 @@ mod credential_watch_worker_tests {
             started_rx.recv_timeout(Duration::from_secs(5)).unwrap();
             // A second timer tick cannot acquire the worker while discovery is
             // blocked, but an explicit refresh can queue for that worker.
-            assert!(
-                in_flight
-                    .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-                    .is_err()
-            );
+            assert!(in_flight
+                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                .is_err());
             pending.store(true, Ordering::Release);
             resume_tx.send(()).unwrap();
             assert_eq!(worker.join().unwrap(), [true, false]);

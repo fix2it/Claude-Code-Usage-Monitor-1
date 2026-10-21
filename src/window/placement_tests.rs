@@ -824,14 +824,12 @@ fn test_placement_override_serialization_and_normalization() {
 
     let deserialized: app_settings::PlacementOverride = serde_json::from_str(&json).unwrap();
     assert_eq!(ov, deserialized);
-    assert!(
-        serde_json::from_str::<app_settings::PlacementOverride>(
-            r#"{"nest":"floating","monitor_index":0}"#
-        )
-        .unwrap()
-        .floating_host
-        .is_none()
-    );
+    assert!(serde_json::from_str::<app_settings::PlacementOverride>(
+        r#"{"nest":"floating","monitor_index":0}"#
+    )
+    .unwrap()
+    .floating_host
+    .is_none());
 
     let mut settings = app_settings::SettingsFile::default();
     settings.floating_card_opacity = Some(150);
@@ -955,7 +953,7 @@ fn auto_ejection_uses_monitor_relative_edges() {
 
 #[test]
 fn drag_release_snapshots_state_before_reentrant_capture_change() {
-    use message_loop::{DragRelease, release_drag_capture_with};
+    use message_loop::{release_drag_capture_with, DragRelease};
     use std::cell::{Cell, RefCell};
 
     for original in [

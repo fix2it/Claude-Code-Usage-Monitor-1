@@ -336,12 +336,10 @@ fn floating_layout_survives_restart_repeated_drags_and_auto_ejection() {
         effective.surfaces[0].placement.host_dimensions,
         Some((1920, 46))
     );
-    assert!(
-        theme_with_placement(&state, false).unwrap().surfaces[0]
-            .placement
-            .host_dimensions
-            .is_none()
-    );
+    assert!(theme_with_placement(&state, false).unwrap().surfaces[0]
+        .placement
+        .host_dimensions
+        .is_none());
 }
 
 #[test]
