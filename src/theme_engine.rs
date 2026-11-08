@@ -1539,6 +1539,9 @@ impl ThemeRuntime {
 
 const FIVE_HOURS: std::time::Duration = std::time::Duration::from_secs(5 * 3600);
 const WEEK: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 3600);
+/// Fallback length for the 30-day billing window when a cached reading has
+/// no period start. A live reading uses the real `startsAt..endsAt` length.
+const MONTH: std::time::Duration = std::time::Duration::from_secs(30 * 24 * 3600);
 
 /// Percent of a window of `length` that has passed by now, given when it
 /// resets; `None` when the reset is not within one window from now.
@@ -1982,6 +1985,32 @@ impl DataContext {
                 display(expected),
             );
         }
+        // The true 7-day window (OpenCode Go). `weekly` above may instead
+        // hold the more constrained 30-day window, so its pace bindings must
+        // come from `week` directly rather than from the auto-selected slot.
+        let week = usage.and_then(|usage| usage.week.as_ref());
+        let week_percentage = week.map(|week| week.percentage).unwrap_or(0.0);
+        self.insert_string(&format!("{name}.week.label"), "7d");
+        self.insert(
+            &format!("{name}.week.available"),
+            week.is_some_and(|week| week.available) as u8 as f64,
+        );
+        self.insert(&format!("{name}.week.percentage"), week_percentage);
+        self.insert(&format!("{name}.week.remaining"), 100.0 - week_percentage);
+        self.insert(&format!("{name}.week.display"), display(week_percentage));
+        let week_expected = week
+            .filter(|week| week.available)
+            .and_then(|week| expected_used(week.resets_at?, WEEK));
+        self.insert(
+            &format!("{name}.week.expected_available"),
+            week_expected.is_some() as u8 as f64,
+        );
+        let week_expected = week_expected.unwrap_or(0.0);
+        self.insert(&format!("{name}.week.expected"), week_expected);
+        self.insert(
+            &format!("{name}.week.expected_display"),
+            display(week_expected),
+        );
         let monthly = usage.and_then(|usage| usage.monthly.as_ref());
         self.insert_string(&format!("{name}.monthly.label"), "30d");
         if let Some(monthly) = monthly {
@@ -2002,6 +2031,27 @@ impl DataContext {
         self.insert(
             &format!("{name}.monthly.available"),
             monthly.is_some() as u8 as f64,
+        );
+        // The 30-day window's real length is the billing period. Cached
+        // readings without `startsAt` fall back to a fixed 30-day window.
+        let monthly_length = usage
+            .and_then(|usage| usage.monthly_started_at)
+            .zip(monthly.and_then(|monthly| monthly.resets_at))
+            .and_then(|(start, end)| end.duration_since(start).ok())
+            .filter(|length| !length.is_zero())
+            .unwrap_or(MONTH);
+        let monthly_expected = monthly
+            .filter(|monthly| monthly.available)
+            .and_then(|monthly| expected_used(monthly.resets_at?, monthly_length));
+        self.insert(
+            &format!("{name}.monthly.expected_available"),
+            monthly_expected.is_some() as u8 as f64,
+        );
+        let monthly_expected = monthly_expected.unwrap_or(0.0);
+        self.insert(&format!("{name}.monthly.expected"), monthly_expected);
+        self.insert(
+            &format!("{name}.monthly.expected_display"),
+            display(monthly_expected),
         );
         self.insert(&format!("{name}.available"), usage.is_some() as u8 as f64);
         // Carried over from an earlier poll: real figures, not current ones.
@@ -2087,10 +2137,12 @@ impl DataContext {
         }
         let (monthly_unix, monthly_seconds) =
             reset_value(monthly.and_then(|value| value.resets_at));
+        let (week_unix, week_seconds) = reset_value(week.and_then(|value| value.resets_at));
         for (window, unix, seconds) in [
             ("session", session_unix, session_seconds),
             ("five_hour", five_hour_unix, five_hour_seconds),
             ("weekly", weekly_unix, weekly_seconds),
+            ("week", week_unix, week_seconds),
             ("monthly", monthly_unix, monthly_seconds),
         ] {
             self.insert(&format!("{name}.{window}.reset.unix"), unix);

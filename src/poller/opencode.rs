@@ -39,8 +39,12 @@ struct UsageWindow {
 #[derive(Debug, Default, PartialEq)]
 struct DashboardUsage {
     rolling: Option<UsageWindow>,
+    /// The true 7-day window. `UsageData.weekly` may instead hold the more
+    /// constrained 30-day window; this one is never replaced.
     weekly: Option<UsageWindow>,
     monthly: Option<UsageWindow>,
+    /// Billing period start (`startsAt`); the 30-day window ends at `endsAt`.
+    period_start: Option<SystemTime>,
 }
 
 // The console JSON API serializes microcent amounts as strings (JavaScript BigInts).
@@ -53,6 +57,10 @@ struct GoStatus {
 #[serde(rename_all = "camelCase")]
 struct GoAccess {
     ends_at: String,
+    /// Billing period start. Optional so a response without it still parses;
+    /// the pace calculation then falls back to a fixed 30-day window.
+    #[serde(default)]
+    starts_at: Option<String>,
     meters: GoMeters,
 }
 
@@ -108,26 +116,36 @@ fn poll_dashboard(credentials: &DashboardCredentials) -> Result<UsageData, PollE
         return Err(PollError::RequestFailed);
     }
 
+    Ok(usage_data_from_dashboard(&usage))
+}
+
+/// Build the cached usage from a parsed dashboard response. Kept separate
+/// from the HTTP path so the three windows and the billing period can be
+/// tested without credentials or a live request.
+fn usage_data_from_dashboard(usage: &DashboardUsage) -> UsageData {
     let session = usage
         .rolling
         .as_ref()
         .map(section_from_window)
         .unwrap_or_default();
-    let (weekly, weekly_label) = select_long_window(&usage);
+    let (weekly, weekly_label) = select_long_window(usage);
 
-    Ok(UsageData {
+    UsageData {
         limits: Vec::new(),
         session,
         weekly,
         weekly_label,
-        // The monthly window is kept available to themes alongside the
-        // auto-selected `weekly` slot (which prefers the more constrained
-        // of the two windows, as before).
+        // The true 7-day window. `weekly` above may have selected the 30-day
+        // figure instead, so both long windows must survive into the cache.
+        week: usage.weekly.as_ref().map(section_from_window),
+        // The monthly window is the 30-day billing period; `resets_at` is its
+        // end (`endsAt`) and `monthly_started_at` its start (`startsAt`).
         monthly: usage.monthly.as_ref().map(section_from_window),
+        monthly_started_at: usage.period_start,
         credits: None,
         stale: false,
         ..Default::default()
-    })
+    }
 }
 
 fn select_long_window(usage: &DashboardUsage) -> (UsageSection, Option<String>) {
@@ -274,6 +292,17 @@ fn usage_from_status(status: Option<GoStatus>) -> Result<DashboardUsage, PollErr
         diagnose::log("OpenCode Go status returned no active subscription access");
         PollError::RequestFailed
     })?;
+    let period_start = access.starts_at.as_deref().and_then(|value| {
+        let parsed = parse_iso8601(Some(value));
+        if parsed.is_none() {
+            // The period start only refines the pace tick. A malformed value
+            // must not hide the quota figures: use the fixed 30-day fallback.
+            diagnose::log(
+                "OpenCode Go status has an invalid billing period start; using a 30-day fallback",
+            );
+        }
+        parsed
+    });
     Ok(DashboardUsage {
         rolling: Some(window_from_meter(
             &access.meters.five_hour.meter,
@@ -287,6 +316,7 @@ fn usage_from_status(status: Option<GoStatus>) -> Result<DashboardUsage, PollErr
             &access.meters.month,
             Some(&access.ends_at),
         )?),
+        period_start,
     })
 }
 
@@ -453,6 +483,52 @@ mod tests {
         assert_eq!(long.percentage, 60.0);
         assert_eq!(label.as_deref(), Some("30d"));
         assert_eq!(long.resets_at, parse_iso8601(Some("2026-10-01T00:00:00Z")));
+        assert_eq!(
+            usage.period_start,
+            parse_iso8601(Some("2026-09-01T00:00:00Z"))
+        );
+    }
+
+    #[test]
+    fn console_status_keeps_both_long_windows_and_the_billing_period() {
+        let usage = usage_from_status(serde_json::from_str(GO_STATUS_JSON).unwrap()).unwrap();
+        let data = usage_data_from_dashboard(&usage);
+
+        // `weekly` auto-selects the more constrained 30-day window, but the
+        // true 7-day window must survive separately for the split gauge.
+        assert_eq!(data.weekly.percentage, 60.0);
+        assert_eq!(data.weekly_label.as_deref(), Some("30d"));
+        assert_eq!(data.week.as_ref().unwrap().percentage, 45.0);
+        assert_eq!(
+            data.week.as_ref().unwrap().resets_at,
+            parse_iso8601(Some("2026-09-21T00:00:00Z"))
+        );
+        assert_eq!(data.monthly.as_ref().unwrap().percentage, 60.0);
+        assert_eq!(
+            data.monthly_started_at,
+            parse_iso8601(Some("2026-09-01T00:00:00Z"))
+        );
+    }
+
+    #[test]
+    fn console_status_accepts_a_missing_billing_period_start() {
+        let json = GO_STATUS_JSON.replace("\"startsAt\": \"2026-09-01T00:00:00.000Z\",", "");
+        let usage = usage_from_status(serde_json::from_str(&json).unwrap()).unwrap();
+        assert_eq!(usage.period_start, None);
+        let data = usage_data_from_dashboard(&usage);
+        assert_eq!(data.monthly_started_at, None);
+        // The 30-day window itself is unaffected by the missing start.
+        assert_eq!(data.monthly.as_ref().unwrap().percentage, 60.0);
+    }
+
+    #[test]
+    fn console_status_ignores_a_malformed_billing_period_start() {
+        let json = GO_STATUS_JSON.replace("2026-09-01T00:00:00.000Z", "invalid-date");
+        // The period start is optional and only refines the pace tick, so a
+        // bad value must not discard otherwise valid quota figures.
+        let usage = usage_from_status(serde_json::from_str(&json).unwrap()).unwrap();
+        assert_eq!(usage.period_start, None);
+        assert_eq!(usage.monthly.as_ref().unwrap().usage_percent, 60.0);
     }
 
     #[test]

@@ -81,10 +81,22 @@ pub struct UsageData {
     pub weekly: UsageSection,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weekly_label: Option<String>,
+    /// The true 7-day window, kept alongside the auto-selected `weekly`
+    /// slot. `weekly` may hold the 30-day figure when that window is the more
+    /// constrained one, so a theme that needs both long windows at once
+    /// (OpenCode Go) must not derive this from `weekly`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub week: Option<UsageSection>,
     /// Optional longer-window usage (e.g. the OpenCode Go monthly window).
     /// Kept separate from `weekly` so themes can choose how to display it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub monthly: Option<UsageSection>,
+    /// Start of the billing period behind `monthly`. Together with
+    /// `monthly.resets_at` (the period end) this gives the real window length
+    /// for the pace tick. Older caches and providers without a period start
+    /// fall back to a fixed 30-day window.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monthly_started_at: Option<SystemTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credits: Option<CreditsSection>,
     /// Additional API quotas, exposed only through opt-in theme bindings.
@@ -126,6 +138,7 @@ impl UsageData {
         };
         [&self.session, &self.weekly]
             .into_iter()
+            .chain(self.week.iter())
             .chain(self.monthly.iter())
             .chain(self.limits.iter().map(|limit| &limit.usage))
             .chain(external_sections)
@@ -450,6 +463,39 @@ mod tests {
         json.as_object_mut().unwrap().remove("session_label");
         let legacy: UsageData = serde_json::from_value(json).unwrap();
         assert!(legacy.session_label.is_none());
+    }
+
+    #[test]
+    fn usage_cache_preserves_seven_day_window_and_billing_period_start() {
+        use std::time::Duration;
+
+        let period_start = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let usage = UsageData {
+            week: Some(UsageSection {
+                available: true,
+                percentage: 45.0,
+                resets_at: None,
+            }),
+            monthly_started_at: Some(period_start),
+            ..Default::default()
+        };
+        let json = serde_json::to_value(&usage).unwrap();
+        assert_eq!(json["week"]["percentage"], 45.0);
+        assert_eq!(
+            serde_json::from_value::<UsageData>(json.clone()).unwrap(),
+            usage
+        );
+        // The new window participates in the same reset/staleness checks.
+        assert!(usage.sections().any(|section| section.percentage == 45.0));
+
+        // A cache written before these fields existed must still decode.
+        let mut legacy = json;
+        let object = legacy.as_object_mut().unwrap();
+        object.remove("week");
+        object.remove("monthly_started_at");
+        let decoded: UsageData = serde_json::from_value(legacy).unwrap();
+        assert!(decoded.week.is_none());
+        assert!(decoded.monthly_started_at.is_none());
     }
 
     #[test]

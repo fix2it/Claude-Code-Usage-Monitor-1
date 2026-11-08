@@ -3797,7 +3797,7 @@ fn pace_expected_used_rejects_resets_outside_the_window() {
     use std::time::{Duration, SystemTime};
 
     let now = SystemTime::now();
-    for length in [FIVE_HOURS, WEEK] {
+    for length in [FIVE_HOURS, WEEK, MONTH] {
         let half = expected_used(now + length / 2, length).unwrap();
         assert!((half - 50.0).abs() < 0.1, "{half}");
         assert_eq!(expected_used(SystemTime::UNIX_EPOCH, length), None);
@@ -3914,7 +3914,7 @@ fn pace_bindings_hide_missing_windows_and_reset_times() {
             let mut context = DataContext::default();
             for data in [None, Some(&usage)] {
                 context.insert_provider("claude", data, false, countdown);
-                for window in ["session", "five_hour", "weekly"] {
+                for window in ["session", "five_hour", "weekly", "week", "monthly"] {
                     assert_eq!(
                         context.get(&format!("claude.{window}.expected_available")),
                         Some(0.0)
@@ -3924,6 +3924,85 @@ fn pace_bindings_hide_missing_windows_and_reset_times() {
             }
         }
     }
+}
+
+#[test]
+fn opencode_three_windows_expose_expected_bindings() {
+    use crate::models::{UsageData, UsageSection};
+    use std::time::{Duration, SystemTime};
+
+    let now = SystemTime::now();
+    // A quarter of each window has elapsed: expected = 25%, display = 25%
+    // (or 75% in countdown mode).
+    let three_quarters = |length: Duration| now + length * 3 / 4;
+    let section = |percentage: f64, resets_at: SystemTime| UsageSection {
+        available: true,
+        percentage,
+        resets_at: Some(resets_at),
+    };
+    let usage = UsageData {
+        session: section(10.0, three_quarters(FIVE_HOURS)),
+        // The true 7-day window keeps its own reset even though `weekly`
+        // auto-selected the more constrained 30-day window below.
+        week: Some(section(45.0, three_quarters(WEEK))),
+        weekly: section(60.0, three_quarters(MONTH)),
+        monthly_started_at: Some(now - MONTH / 4),
+        monthly: Some(section(60.0, three_quarters(MONTH))),
+        ..Default::default()
+    };
+    let data = AppUsageData::from_iter([(ProviderId::OpenCode, usage)]);
+
+    for countdown in [false, true] {
+        let context = DataContext::from_usage_with_runtime(
+            Some(&data),
+            &Canvas::default(),
+            ThemeRuntime::default().with_countdown(countdown),
+        );
+        for window in ["session", "week", "monthly"] {
+            let base = format!("opencode.{window}");
+            assert_eq!(
+                context.get(&format!("{base}.expected_available")),
+                Some(1.0),
+                "{base}"
+            );
+            let used = context.get(&format!("{base}.expected")).unwrap();
+            assert!((used - 25.0).abs() < 0.1, "{base}: {used}");
+            let shown = context.get(&format!("{base}.expected_display")).unwrap();
+            let wanted = if countdown { 75.0 } else { 25.0 };
+            assert!((shown - wanted).abs() < 0.1, "{base}: {shown}");
+        }
+        assert_eq!(context.get("opencode.week.percentage"), Some(45.0));
+        assert_eq!(context.get("opencode.week.available"), Some(1.0));
+        assert_eq!(context.get_string("opencode.week.label"), Some("7d"));
+        assert_eq!(context.get("opencode.monthly.percentage"), Some(60.0));
+        // The auto-selected `weekly` carries a 30-day reset, far outside the
+        // 7-day pace window, so it has no tick. This is why `week` exists.
+        assert_eq!(context.get("opencode.weekly.expected_available"), Some(0.0));
+    }
+}
+
+#[test]
+fn monthly_expected_falls_back_to_a_fixed_month_without_a_period_start() {
+    use crate::models::{UsageData, UsageSection};
+    use std::time::SystemTime;
+
+    let now = SystemTime::now();
+    let usage = UsageData {
+        monthly: Some(UsageSection {
+            available: true,
+            percentage: 60.0,
+            resets_at: Some(now + MONTH * 3 / 4),
+        }),
+        ..Default::default()
+    };
+    let data = AppUsageData::from_iter([(ProviderId::OpenCode, usage)]);
+    let context = DataContext::from_usage(Some(&data), &Canvas::default());
+    assert_eq!(
+        context.get("opencode.monthly.expected_available"),
+        Some(1.0)
+    );
+    let used = context.get("opencode.monthly.expected").unwrap();
+    assert!((used - 25.0).abs() < 0.1, "{used}");
 }
 
 #[test]
