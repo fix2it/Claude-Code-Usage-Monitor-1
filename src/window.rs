@@ -112,6 +112,7 @@ struct AppState {
     pub(super) codex_crossfade_opacity: f64,
     pub(super) codex_crossfade_animation: Option<PhaseAnimation>,
     pub(super) codex_tile_rect: Option<(f64, f64, f64, f64)>,
+    pub(super) opencode_tile_rect: Option<(f64, f64, f64, f64)>,
     opencode_hovered: bool,
     opencode_crossfade_opacity: f64,
     opencode_crossfade_animation: Option<PhaseAnimation>,
@@ -2028,6 +2029,7 @@ fn replace_active_theme(state: &mut AppState, loaded: ThemeDocument, path: Optio
     state.antigravity_tile_rect = None;
     state.claude_tile_rect = None;
     state.codex_tile_rect = None;
+    state.opencode_tile_rect = None;
     if path.is_some() {
         state.active_theme_path = path;
     }
@@ -2702,6 +2704,7 @@ pub fn run() {
                 codex_crossfade_opacity: 0.0,
                 codex_crossfade_animation: None,
                 codex_tile_rect: None,
+                opencode_tile_rect: None,
                 opencode_hovered: false,
                 opencode_crossfade_opacity: 0.0,
                 opencode_crossfade_animation: None,
@@ -2898,6 +2901,15 @@ fn render_layered() {
                         usage_data.as_ref(),
                         surface_runtime,
                         mouse::CODEX_HOVER_OBJECT,
+                    );
+                }
+                if state.opencode_tile_rect.is_none() {
+                    state.opencode_tile_rect = theme_engine::object_bounds(
+                        &theme,
+                        0,
+                        usage_data.as_ref(),
+                        surface_runtime,
+                        mouse::OPENCODE_HOVER_OBJECT,
                     );
                 }
             }
@@ -3519,16 +3531,16 @@ fn check_language_change() {
 const ANTIGRAVITY_CROSSFADE_DURATION_MS: u64 = 200;
 const CODEX_CROSSFADE_DURATION_MS: u64 = 200;
 const CLAUDE_CROSSFADE_DURATION_MS: u64 = 200;
+const OPENCODE_CROSSFADE_DURATION_MS: u64 = 200;
 const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 16;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Easing {
-    /// The original hover crossfade: constant-speed interpolation. Kept so
-    /// the existing widget looks identical until Stage 3 replaces it.
-    Linear,
-    /// Ease-in-out used by the view mode transitions. Constructed by the
-    /// Stage 4 input wiring; until then it is exercised by unit tests.
+    /// Constant-speed interpolation, kept as the reference behaviour and used
+    /// by unit tests. Stage 3 moved the live hover animations to Smoothstep.
     #[allow(dead_code)]
+    Linear,
+    /// Ease-in-out now used by every live hover and view-mode animation.
     Smoothstep,
 }
 
@@ -3576,9 +3588,15 @@ impl PhaseAnimation {
         }
     }
 
-    /// Hover crossfades keep their original linear interpolation.
+    /// Reference linear interpolation, exercised by unit tests.
+    #[allow(dead_code)]
     pub(super) fn linear(start: f64, target: f64, duration: std::time::Duration) -> Self {
         Self::new(start, target, duration, Easing::Linear)
+    }
+
+    /// Every live hover animation eases in and out over 200 ms.
+    pub(super) fn hover(start: f64, target: f64, duration: std::time::Duration) -> Self {
+        Self::new(start, target, duration, Easing::Smoothstep)
     }
 
     pub(super) fn current(&self) -> (f64, bool) {
@@ -3701,7 +3719,7 @@ pub(super) fn set_claude_hover(hwnd: HWND, hovered: bool) {
             state.claude_hovered = hovered;
             if state.is_dual_mode_active(ProviderId::Claude) {
                 let target = if hovered { 1.0 } else { 0.0 };
-                state.claude_crossfade_animation = Some(PhaseAnimation::linear(
+                state.claude_crossfade_animation = Some(PhaseAnimation::hover(
                     state.claude_crossfade_opacity,
                     target,
                     std::time::Duration::from_millis(CLAUDE_CROSSFADE_DURATION_MS),
@@ -3728,7 +3746,7 @@ pub(super) fn set_codex_hover(hwnd: HWND, hovered: bool) {
             state.codex_hovered = hovered;
             if state.is_dual_mode_active(ProviderId::Codex) {
                 let target = if hovered { 1.0 } else { 0.0 };
-                state.codex_crossfade_animation = Some(PhaseAnimation::linear(
+                state.codex_crossfade_animation = Some(PhaseAnimation::hover(
                     state.codex_crossfade_opacity,
                     target,
                     std::time::Duration::from_millis(CODEX_CROSSFADE_DURATION_MS),
@@ -3758,10 +3776,39 @@ pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
             state.antigravity_hovered = hovered;
             if any_pool {
                 let target = if hovered { 0.0 } else { 1.0 };
-                state.crossfade_animation = Some(PhaseAnimation::linear(
+                state.crossfade_animation = Some(PhaseAnimation::hover(
                     state.crossfade_opacity,
                     target,
                     std::time::Duration::from_millis(ANTIGRAVITY_CROSSFADE_DURATION_MS),
+                ));
+                should_animate = true;
+            }
+        }
+    }
+    if should_animate {
+        ensure_crossfade_timer(hwnd);
+        render_layered();
+    }
+}
+
+/// Drives the OpenCode hover phase (Stage 6's split gauge consumes it).
+/// Unlike the three dual-mode providers this is gated on the provider being
+/// enabled, not on dual-mode account selection.
+pub(super) fn set_opencode_hover(hwnd: HWND, hovered: bool) {
+    let mut should_animate = false;
+    {
+        let mut state = lock_state();
+        let Some(state) = state.as_mut() else {
+            return;
+        };
+        if state.opencode_hovered != hovered {
+            state.opencode_hovered = hovered;
+            if state.providers.contains(ProviderId::OpenCode) {
+                let target = if hovered { 1.0 } else { 0.0 };
+                state.opencode_crossfade_animation = Some(PhaseAnimation::hover(
+                    state.opencode_crossfade_opacity,
+                    target,
+                    std::time::Duration::from_millis(OPENCODE_CROSSFADE_DURATION_MS),
                 ));
                 should_animate = true;
             }
@@ -3832,6 +3879,7 @@ fn reload_external_settings(hwnd: HWND) {
         state.antigravity_tile_rect = None;
         state.claude_tile_rect = None;
         state.codex_tile_rect = None;
+        state.opencode_tile_rect = None;
         update_configured_placement(
             state,
             settings.placement_override,
@@ -4798,6 +4846,31 @@ mod phase_animation_tests {
             assert!(state.is_any_animation_active(), "slot {index}");
             set_slot(&mut state, index, None);
             assert!(!state.is_any_animation_active(), "slot {index}");
+        }
+    }
+
+    #[test]
+    fn live_hover_animations_use_smoothstep() {
+        let anim = PhaseAnimation::hover(0.0, 1.0, Duration::from_millis(200));
+        assert_eq!(anim.easing, Easing::Smoothstep);
+        assert_eq!(anim.duration, Duration::from_millis(200));
+        // The eased curve is slower at the ends and symmetric at the midpoint.
+        assert_eq!(interpolate_phase(0.0, 1.0, 0.5, Easing::Smoothstep), 0.5);
+        assert!(interpolate_phase(0.0, 1.0, 0.25, Easing::Smoothstep) < 0.25);
+        assert!(interpolate_phase(0.0, 1.0, 0.75, Easing::Smoothstep) > 0.75);
+    }
+
+    #[test]
+    fn asymmetric_opacities_avoid_double_exposure_under_eased_progress() {
+        // Easing changes the timing but the asymmetric ramp must still keep
+        // the two layer sets from being fully visible at the same time.
+        for step in 0..=100 {
+            let t = step as f64 / 100.0;
+            let progress = interpolate_phase(0.0, 1.0, t, Easing::Smoothstep);
+            let (normal, hover) = crate::theme_engine::asymmetric_crossfade_opacities(progress);
+            assert!((0.0..=1.0).contains(&normal), "{t}: {normal}");
+            assert!((0.0..=1.0).contains(&hover), "{t}: {hover}");
+            assert!(normal + hover <= 1.0 + 1e-9, "{t}: {normal} + {hover}");
         }
     }
 

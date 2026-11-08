@@ -1568,7 +1568,7 @@
           "parent": "antigravity-provider",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1604,7 +1604,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1626,7 +1626,7 @@
           "parent": "antigravity-provider",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1662,7 +1662,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1684,7 +1684,7 @@
           "parent": "antigravity-provider",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1720,7 +1720,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1742,7 +1742,7 @@
           "parent": "antigravity-provider",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1778,7 +1778,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1798,9 +1798,9 @@
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
-          "y": "16",
+          "y": "16 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1834,9 +1834,9 @@
           "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
-          "y": "15",
+          "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1856,9 +1856,9 @@
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
-          "y": "13",
+          "y": "16 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1892,9 +1892,9 @@
           "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
-          "y": "12",
+          "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1914,9 +1914,9 @@
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
-          "y": "16",
+          "y": "16 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -1950,9 +1950,9 @@
           "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
-          "y": "15",
+          "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -1972,9 +1972,9 @@
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
-          "y": "13",
+          "y": "16 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2008,9 +2008,9 @@
           "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
-          "y": "12",
+          "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2031,7 +2031,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8",
+          "y": "8 - 13 * antigravity.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -2064,7 +2064,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8",
+          "y": "8 + 13 * (1 - antigravity.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -2097,7 +2097,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8",
+          "y": "8 - 13 * antigravity.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -2130,7 +2130,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8",
+          "y": "8 + 13 * (1 - antigravity.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -2164,7 +2164,7 @@
           "parent": "antigravity-provider",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2200,7 +2200,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2222,7 +2222,7 @@
           "parent": "antigravity-provider",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2258,7 +2258,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2280,7 +2280,7 @@
           "parent": "antigravity-provider",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2316,7 +2316,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2338,7 +2338,7 @@
           "parent": "antigravity-provider",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2374,7 +2374,7 @@
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2394,9 +2394,9 @@
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
-          "y": "35",
+          "y": "35 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2430,9 +2430,9 @@
           "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
-          "y": "34",
+          "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2452,9 +2452,9 @@
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
-          "y": "32",
+          "y": "35 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2488,9 +2488,9 @@
           "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
-          "y": "31",
+          "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2510,9 +2510,9 @@
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
-          "y": "35",
+          "y": "35 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2546,9 +2546,9 @@
           "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
-          "y": "34",
+          "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2568,9 +2568,9 @@
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
-          "y": "32",
+          "y": "35 - 3 * antigravity.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
           },
@@ -2604,9 +2604,9 @@
           "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
-          "y": "31",
+          "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * antigravity.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -2627,7 +2627,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25",
+          "y": "25 - 13 * antigravity.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -2660,7 +2660,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25",
+          "y": "25 + 13 * (1 - antigravity.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -2693,7 +2693,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25",
+          "y": "25 - 13 * antigravity.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -2726,7 +2726,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25",
+          "y": "25 + 13 * (1 - antigravity.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -3829,7 +3829,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -3865,7 +3865,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -3891,7 +3891,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -3927,7 +3927,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -3953,7 +3953,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -3989,7 +3989,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4015,7 +4015,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4051,7 +4051,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4075,9 +4075,9 @@
           "visibility": "100 * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "16",
+          "y": "16 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4111,9 +4111,9 @@
           "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "15",
+          "y": "15 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4137,9 +4137,9 @@
           "visibility": "100 * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "13",
+          "y": "16 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4173,9 +4173,9 @@
           "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "12",
+          "y": "15 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4199,9 +4199,9 @@
           "visibility": "100 * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "16",
+          "y": "16 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4235,9 +4235,9 @@
           "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "15",
+          "y": "15 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4261,9 +4261,9 @@
           "visibility": "100 * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "13",
+          "y": "16 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4297,9 +4297,9 @@
           "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "12",
+          "y": "15 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4323,7 +4323,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 - 13 * claude.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -4356,7 +4356,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 + 13 * (1 - claude.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -4389,7 +4389,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 - 13 * claude.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -4422,7 +4422,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 + 13 * (1 - claude.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -4589,7 +4589,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4625,7 +4625,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4651,7 +4651,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4687,7 +4687,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4713,7 +4713,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4749,7 +4749,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4775,7 +4775,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4811,7 +4811,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4835,9 +4835,9 @@
           "visibility": "100 * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "35",
+          "y": "35 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4871,9 +4871,9 @@
           "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "34",
+          "y": "34 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4897,9 +4897,9 @@
           "visibility": "100 * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "32",
+          "y": "35 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4933,9 +4933,9 @@
           "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "31",
+          "y": "34 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -4959,9 +4959,9 @@
           "visibility": "100 * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "35",
+          "y": "35 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -4995,9 +4995,9 @@
           "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.normal.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "34",
+          "y": "34 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5021,9 +5021,9 @@
           "visibility": "100 * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12",
-          "y": "32",
+          "y": "35 - 3 * claude.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5057,9 +5057,9 @@
           "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.hover.opacity",
           "parent": "claude-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "31",
+          "y": "34 - 3 * claude.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * claude.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5083,7 +5083,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 - 13 * claude.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -5116,7 +5116,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 + 13 * (1 - claude.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -5149,7 +5149,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 - 13 * claude.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -5182,7 +5182,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 + 13 * (1 - claude.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -5485,7 +5485,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5521,7 +5521,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5547,7 +5547,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5583,7 +5583,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5609,7 +5609,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5645,7 +5645,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5671,7 +5671,7 @@
           "x": "12",
           "y": "8",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5707,7 +5707,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5731,9 +5731,9 @@
           "visibility": "100 * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "16",
+          "y": "16 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5767,9 +5767,9 @@
           "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "15",
+          "y": "15 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5793,9 +5793,9 @@
           "visibility": "100 * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "13",
+          "y": "16 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5829,9 +5829,9 @@
           "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "12",
+          "y": "15 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5855,9 +5855,9 @@
           "visibility": "100 * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "16",
+          "y": "16 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5891,9 +5891,9 @@
           "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "15",
+          "y": "15 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5917,9 +5917,9 @@
           "visibility": "100 * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "13",
+          "y": "16 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -5953,9 +5953,9 @@
           "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
-          "y": "12",
+          "y": "15 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -5979,7 +5979,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 - 13 * codex.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -6012,7 +6012,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 + 13 * (1 - codex.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -6045,7 +6045,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 - 13 * codex.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -6078,7 +6078,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7",
+          "y": "7 + 13 * (1 - codex.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -6245,7 +6245,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6281,7 +6281,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6307,7 +6307,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6343,7 +6343,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6369,7 +6369,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6405,7 +6405,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "8",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6431,7 +6431,7 @@
           "x": "12",
           "y": "27",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6467,7 +6467,7 @@
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
-          "height": "5",
+          "height": "8 - 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6491,9 +6491,9 @@
           "visibility": "100 * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "35",
+          "y": "35 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6527,9 +6527,9 @@
           "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "34",
+          "y": "34 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6553,9 +6553,9 @@
           "visibility": "100 * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "32",
+          "y": "35 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6589,9 +6589,9 @@
           "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "31",
+          "y": "34 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6615,9 +6615,9 @@
           "visibility": "100 * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "35",
+          "y": "35 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "3",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6651,9 +6651,9 @@
           "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.normal.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "34",
+          "y": "34 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "5",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6677,9 +6677,9 @@
           "visibility": "100 * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12",
-          "y": "32",
+          "y": "35 - 3 * codex.hover_phase",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
-          "height": "6",
+          "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
           },
@@ -6713,9 +6713,9 @@
           "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.hover.opacity",
           "parent": "codex-provider",
           "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
-          "y": "31",
+          "y": "34 - 3 * codex.hover_phase",
           "width": "1",
-          "height": "8",
+          "height": "5 + 3 * codex.hover_phase",
           "background": {
             "type": "colour",
             "colour": {
@@ -6739,7 +6739,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 - 13 * codex.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -6772,7 +6772,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 + 13 * (1 - codex.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {
@@ -6805,7 +6805,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 - 13 * codex.hover_phase",
           "width": "62",
           "height": "13",
           "background": {
@@ -6838,7 +6838,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26",
+          "y": "26 + 13 * (1 - codex.hover_phase)",
           "width": "62",
           "height": "13",
           "background": {

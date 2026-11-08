@@ -4317,6 +4317,139 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
 }
 
 #[test]
+fn compact_dual_mode_geometry_morphs_with_hover_phase() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let by_id = |id: &str| children.iter().find(|o| o.id == id).unwrap();
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+    let mut geometry = |object: &SceneObject, field: &str, phase: f64| {
+        for provider in ["antigravity", "claude", "codex"] {
+            context.insert(&format!("{provider}.hover_phase"), phase);
+        }
+        let expression = match field {
+            "height" => &object.height.0,
+            "y" => &object.y.0,
+            _ => unreachable!(),
+        };
+        evaluate(expression, &context).unwrap()
+    };
+
+    // A 5h bar narrows 6 -> 3; a 7d bar widens 3 -> 6 and shifts up 3px.
+    // Both the normal and hover layers share the expression, so no jump.
+    for id in [
+        "claude-main-5h-dark-normal",
+        "claude-main-5h-dark-hover",
+        "codex-x-5h-light-normal",
+        "antigravity-gemini-5h-dark-hover",
+    ] {
+        let gauge = by_id(id);
+        assert_eq!(geometry(gauge, "height", 0.0), 6.0, "{id}");
+        assert_eq!(geometry(gauge, "height", 0.5), 4.5, "{id}");
+        assert_eq!(geometry(gauge, "height", 1.0), 3.0, "{id}");
+    }
+    for id in [
+        "claude-main-7d-dark-normal",
+        "claude-main-7d-dark-hover",
+        "codex-x-7d-light-normal",
+        "antigravity-external-weekly-dark-hover",
+    ] {
+        let gauge = by_id(id);
+        assert_eq!(geometry(gauge, "height", 0.0), 3.0, "{id}");
+        assert_eq!(geometry(gauge, "height", 1.0), 6.0, "{id}");
+    }
+    let weekly = by_id("claude-main-7d-dark-normal");
+    assert_eq!(geometry(weekly, "y", 0.0), 16.0);
+    assert_eq!(geometry(weekly, "y", 1.0), 13.0);
+
+    // Text slides up on hover and comes back down when the hover is removed.
+    let normal_text = by_id("claude-main-text-dark-normal");
+    let hover_text = by_id("claude-main-text-dark-hover");
+    assert_eq!(geometry(normal_text, "y", 0.0), 7.0);
+    assert_eq!(geometry(normal_text, "y", 1.0), -6.0);
+    assert_eq!(geometry(hover_text, "y", 0.0), 20.0);
+    assert_eq!(geometry(hover_text, "y", 1.0), 7.0);
+    // The same direction holds for every provider and both themes.
+    for phase in [0.0, 0.5, 1.0] {
+        for id in [
+            "antigravity-gemini-text-light-normal",
+            "codex-x-text-dark-normal",
+        ] {
+            let text = by_id(id);
+            let base = geometry(text, "y", 0.0);
+            assert!(geometry(text, "y", phase) <= base + 1e-9, "{id}");
+        }
+    }
+
+    // Markers stay at their fixed positions in every mode.
+    for id in [
+        "claude-main-marker-dark-normal",
+        "claude-x-marker-light-hover",
+        "codex-x-marker-dark-hover",
+    ] {
+        let marker = by_id(id);
+        assert!(!marker.y.0.contains("hover_phase"), "{id}");
+        assert!(!marker.height.0.contains("hover_phase"), "{id}");
+        assert!(!marker.x.0.contains("hover_phase"), "{id}");
+    }
+}
+
+#[test]
+fn compact_pace_ticks_follow_morphing_gauges_at_every_hover_phase() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let ticks = children
+        .iter()
+        .enumerate()
+        .filter(|(_, object)| object.id.ends_with("-pace"))
+        .collect::<Vec<_>>();
+    assert_eq!(ticks.len(), 64);
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+    for opacity in [
+        "antigravity.gemini.opacity",
+        "antigravity.external.opacity",
+        "antigravity.normal.opacity",
+        "antigravity.hover.opacity",
+        "claude.normal.opacity",
+        "claude.hover.opacity",
+        "codex.normal.opacity",
+        "codex.hover.opacity",
+    ] {
+        context.insert(opacity, 1.0);
+    }
+    for phase in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        for provider in ["antigravity", "claude", "codex", "opencode"] {
+            context.insert(&format!("{provider}.hover_phase"), phase);
+        }
+        for (index, tick) in &ticks {
+            let gauge = &children[index - 1];
+            assert_eq!(
+                evaluate(&tick.y.0, &context).unwrap(),
+                evaluate(&gauge.y.0, &context).unwrap() - 1.0,
+                "{} at phase {phase}",
+                tick.id
+            );
+            assert_eq!(
+                evaluate(&tick.height.0, &context).unwrap(),
+                evaluate(&gauge.height.0, &context).unwrap() + 2.0,
+                "{} at phase {phase}",
+                tick.id
+            );
+        }
+    }
+}
+
+#[test]
+fn opencode_hover_phase_reaches_both_endpoints() {
+    for phase in [0.0, 0.5, 1.0] {
+        let runtime = ThemeRuntime::default().with_opencode_state(phase);
+        let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+        assert_eq!(context.get("opencode.hover_phase"), Some(phase));
+    }
+}
+
+#[test]
 fn claude_dual_mode_and_crossfade_context_variables() {
     let runtime = ThemeRuntime::default().with_claude_state(true, true, true, 0.75);
     let canvas = Canvas::default();

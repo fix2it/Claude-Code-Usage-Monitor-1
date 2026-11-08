@@ -26,6 +26,7 @@ pub(super) fn state_for(theme: ThemeDocument, placement: PlacementOverride) -> A
         codex_crossfade_opacity: 0.0,
         codex_crossfade_animation: None,
         codex_tile_rect: None,
+        opencode_tile_rect: None,
         opencode_hovered: false,
         opencode_crossfade_opacity: 0.0,
         opencode_crossfade_animation: None,

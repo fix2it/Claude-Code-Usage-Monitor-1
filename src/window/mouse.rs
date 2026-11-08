@@ -199,6 +199,7 @@ pub(super) fn dispatch_double_click(hwnd: HWND, surface_index: usize, object_id:
 pub(super) const ANTIGRAVITY_HOVER_OBJECT: &str = "antigravity-provider";
 pub(super) const CLAUDE_HOVER_OBJECT: &str = "claude-provider";
 pub(super) const CODEX_HOVER_OBJECT: &str = "codex-provider";
+pub(super) const OPENCODE_HOVER_OBJECT: &str = "opencode-provider";
 
 fn tile_hover_at(
     state: &super::AppState,
@@ -226,21 +227,26 @@ pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
     track_mouse_hover_with(hwnd, widget_tooltip::visible_for(hwnd), |tracking| unsafe {
         TrackMouseEvent(tracking)
     });
-    let (antigravity_hovered, claude_hovered, codex_hovered) = {
+    let (antigravity_hovered, claude_hovered, codex_hovered, opencode_hovered) = {
         let state = lock_state();
         if let Some(state) = state.as_ref() {
             (
                 tile_hover_at(state, hwnd, lparam, state.antigravity_tile_rect),
                 tile_hover_at(state, hwnd, lparam, state.claude_tile_rect),
                 tile_hover_at(state, hwnd, lparam, state.codex_tile_rect),
+                tile_hover_at(state, hwnd, lparam, state.opencode_tile_rect),
             )
         } else {
-            (false, false, false)
+            (false, false, false, false)
         }
     };
     set_antigravity_hover(hwnd, antigravity_hovered);
     super::set_claude_hover(hwnd, claude_hovered);
     super::set_codex_hover(hwnd, codex_hovered);
+    // `mouse_target_at` only returns objects with non-empty `mouse_events`,
+    // and the provider wrappers have none, so the OpenCode tile is detected
+    // with the same cached `object_bounds` rect as the other three providers.
+    super::set_opencode_hover(hwnd, opencode_hovered);
     super::tick_animations(hwnd, true);
     for _ in 0..4 {
         let target = mouse_target_at(hwnd, lparam);
@@ -307,6 +313,7 @@ pub(super) fn clear_mouse_hover(hwnd: HWND) {
     set_antigravity_hover(hwnd, false);
     super::set_claude_hover(hwnd, false);
     super::set_codex_hover(hwnd, false);
+    super::set_opencode_hover(hwnd, false);
     let previous = {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {
