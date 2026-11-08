@@ -79,7 +79,7 @@ pub(super) fn state_for(theme: ThemeDocument, placement: PlacementOverride) -> A
     }
 }
 
-fn placement(nest: &str) -> PlacementOverride {
+pub(super) fn placement(nest: &str) -> PlacementOverride {
     PlacementOverride {
         nest: nest.into(),
         monitor_index: 0,

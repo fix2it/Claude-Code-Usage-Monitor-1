@@ -79,7 +79,10 @@ pub struct SettingsFile {
     pub show_pace: bool,
     /// Widget view mode: 1 = full, 2 = bars only, 3 = compact percent.
     /// Persisted so the widget starts in the last selected view.
-    #[serde(default = "default_view_mode")]
+    #[serde(
+        default = "default_view_mode",
+        deserialize_with = "deserialize_view_mode"
+    )]
     pub view_mode: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_theme_path: Option<String>,
@@ -510,6 +513,24 @@ fn default_true() -> bool {
 fn default_view_mode() -> u8 {
     1
 }
+
+/// A hand-edited settings file may carry a mode that is not a valid `u8`
+/// (300, -1, a string, null). Clamp it instead of failing the whole file:
+/// a plain `u8` deserialize error would make `decode_settings` return None
+/// and discard every other preference.
+fn deserialize_view_mode<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let mode = value
+        .as_u64()
+        .and_then(|value| u8::try_from(value).ok())
+        .filter(|value| (1..=3).contains(value))
+        .unwrap_or_else(default_view_mode);
+    Ok(mode)
+}
+
 fn valid_dashboard_dimension(value: Option<f32>) -> Option<f32> {
     value.filter(|value| value.is_finite() && (64.0..=16_384.0).contains(value))
 }
@@ -756,6 +777,15 @@ mod tests {
             let mut loaded = decode_settings(&json).unwrap();
             loaded.normalize();
             assert_eq!(loaded.view_mode, 1, "{json}");
+        }
+        // Values that are not a valid u8 must not discard the whole file.
+        for value in ["300", "-1", "\"2\"", "null", "true"] {
+            let json =
+                format!(r#"{{"view_mode":{value},"show_pace":false,"poll_interval_ms":900000}}"#);
+            let loaded = decode_settings(&json).unwrap();
+            assert_eq!(loaded.view_mode, 1, "{json}");
+            assert!(!loaded.show_pace, "{json}");
+            assert_eq!(loaded.poll_interval_ms, 900_000, "{json}");
         }
         let mut settings = SettingsFile {
             view_mode: 9,

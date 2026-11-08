@@ -4672,7 +4672,7 @@ mod credential_watch_worker_tests {
 
 #[cfg(test)]
 mod phase_animation_tests {
-    use super::{interpolate_phase, next_view_mode, Easing, PhaseAnimation};
+    use super::{interpolate_phase, next_view_mode, AppState, Easing, PhaseAnimation};
     use std::time::Duration;
 
     #[test]
@@ -4740,6 +4740,65 @@ mod phase_animation_tests {
         assert_eq!(redirected.start, reached);
         assert_eq!(redirected.target, 0.0);
         assert_eq!(redirected.easing, Easing::Smoothstep);
+        // The redirected animation really interpolates from the reached
+        // value instead of jumping back to the old start.
+        assert_eq!(
+            interpolate_phase(reached, 0.0, 0.0, Easing::Smoothstep),
+            reached
+        );
+        assert_eq!(
+            interpolate_phase(reached, 0.0, 0.5, Easing::Smoothstep),
+            reached / 2.0
+        );
+        assert_eq!(
+            interpolate_phase(reached, 0.0, 1.0, Easing::Smoothstep),
+            0.0
+        );
+    }
+
+    #[test]
+    fn completed_animation_clears_its_slot() {
+        let mut slot = Some(PhaseAnimation::linear(0.0, 1.0, Duration::from_millis(0)));
+        let mut value = 0.0;
+        let (rendered, more) = PhaseAnimation::tick_slot(&mut slot, &mut value, false);
+        assert!(rendered);
+        assert!(!more);
+        assert!(slot.is_none());
+        assert_eq!(value, 1.0);
+
+        let mut empty: Option<PhaseAnimation> = None;
+        let mut idle = 0.0;
+        assert_eq!(
+            PhaseAnimation::tick_slot(&mut empty, &mut idle, false),
+            (false, false)
+        );
+    }
+
+    #[test]
+    fn animation_timer_stays_active_until_every_slot_settles() {
+        use super::placement_regression_tests::{placement, state_for};
+        use crate::theme_engine::ThemeDocument;
+
+        fn set_slot(state: &mut AppState, index: usize, value: Option<PhaseAnimation>) {
+            match index {
+                0 => state.crossfade_animation = value,
+                1 => state.claude_crossfade_animation = value,
+                2 => state.codex_crossfade_animation = value,
+                3 => state.opencode_crossfade_animation = value,
+                _ => state.mode_animation = value,
+            }
+        }
+
+        let mut state = state_for(ThemeDocument::starter(), placement("taskbar"));
+        assert!(!state.is_any_animation_active());
+        let active = || Some(PhaseAnimation::linear(0.0, 1.0, Duration::from_millis(200)));
+
+        for index in 0..5 {
+            set_slot(&mut state, index, active());
+            assert!(state.is_any_animation_active(), "slot {index}");
+            set_slot(&mut state, index, None);
+            assert!(!state.is_any_animation_active(), "slot {index}");
+        }
     }
 
     #[test]

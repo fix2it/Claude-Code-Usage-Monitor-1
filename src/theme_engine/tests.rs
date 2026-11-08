@@ -4108,6 +4108,100 @@ fn hover_phases_are_independent_and_antigravity_is_inverted() {
 }
 
 #[test]
+fn monthly_expected_uses_the_real_billing_period_length() {
+    use crate::models::{UsageData, UsageSection};
+    use std::time::{Duration, SystemTime};
+
+    let now = SystemTime::now();
+    let day = Duration::from_secs(86_400);
+    // A 20-day period with 16 days left: 4 days elapsed => 20%.
+    // A regression that ignores `startsAt` and always uses 30 days would
+    // report ~46.7% instead.
+    let usage = UsageData {
+        monthly_started_at: Some(now - day * 4),
+        monthly: Some(UsageSection {
+            available: true,
+            percentage: 60.0,
+            resets_at: Some(now + day * 16),
+        }),
+        ..Default::default()
+    };
+    let data = AppUsageData::from_iter([(ProviderId::OpenCode, usage)]);
+    let context = DataContext::from_usage(Some(&data), &Canvas::default());
+    assert_eq!(
+        context.get("opencode.monthly.expected_available"),
+        Some(1.0)
+    );
+    let used = context.get("opencode.monthly.expected").unwrap();
+    assert!((used - 20.0).abs() < 0.2, "{used}");
+}
+
+#[test]
+fn monthly_expected_falls_back_when_the_billing_period_is_reversed() {
+    use crate::models::{UsageData, UsageSection};
+    use std::time::{Duration, SystemTime};
+
+    let now = SystemTime::now();
+    let day = Duration::from_secs(86_400);
+    // `startsAt` after `endsAt` gives a negative duration; the engine must
+    // fall back to the fixed 30-day window rather than panic or hide data.
+    let usage = UsageData {
+        monthly_started_at: Some(now + day * 30),
+        monthly: Some(UsageSection {
+            available: true,
+            percentage: 60.0,
+            resets_at: Some(now + day * 20),
+        }),
+        ..Default::default()
+    };
+    let data = AppUsageData::from_iter([(ProviderId::OpenCode, usage)]);
+    let context = DataContext::from_usage(Some(&data), &Canvas::default());
+    assert_eq!(
+        context.get("opencode.monthly.expected_available"),
+        Some(1.0)
+    );
+    let used = context.get("opencode.monthly.expected").unwrap();
+    let wanted = (1.0 - 20.0 / 30.0) * 100.0;
+    assert!((used - wanted).abs() < 0.2, "{used}");
+}
+
+#[test]
+fn present_week_and_monthly_without_resets_have_no_pace_tick() {
+    use crate::models::{UsageData, UsageSection};
+
+    let usage = UsageData {
+        week: Some(UsageSection {
+            available: true,
+            percentage: 45.0,
+            resets_at: None,
+        }),
+        monthly: Some(UsageSection {
+            available: true,
+            percentage: 60.0,
+            resets_at: None,
+        }),
+        ..Default::default()
+    };
+    let data = AppUsageData::from_iter([(ProviderId::OpenCode, usage)]);
+    let context = DataContext::from_usage(Some(&data), &Canvas::default());
+    for window in ["session", "five_hour", "weekly", "week", "monthly"] {
+        assert_eq!(
+            context.get(&format!("opencode.{window}.expected_available")),
+            Some(0.0),
+            "{window}"
+        );
+        assert_eq!(
+            context.get(&format!("opencode.{window}.expected")),
+            Some(0.0),
+            "{window}"
+        );
+    }
+    // Presence is still reported even though there is no pace tick.
+    assert_eq!(context.get("opencode.week.percentage"), Some(45.0));
+    assert_eq!(context.get("opencode.monthly.percentage"), Some(60.0));
+}
+
+#[test]
 fn show_pace_binding_follows_the_setting() {
     let defaults = crate::app_settings::SettingsFile::default();
     assert!(defaults.show_pace);
