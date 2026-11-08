@@ -228,7 +228,6 @@ fn fetch_go_status(
         format!("auth={}", credentials.auth_cookie)
     };
 
-
     let bearer_token = extract_bearer_token(&credentials.auth_cookie);
 
     let request = build_agent()?
@@ -251,10 +250,7 @@ fn fetch_go_status(
         request
     };
 
-    let mut response = match request
-        .call()
-        .and_then(super::check_http_status)
-    {
+    let mut response = match request.call().and_then(super::check_http_status) {
         Ok(response) => response,
         Err(ureq::Error::StatusCode(401 | 403)) => return Err(PollError::AuthRequired),
         Err(error) => {
@@ -564,11 +560,7 @@ mod tests {
     #[test]
     fn console_request_sends_workspace_context_and_normalizes_auth_cookie() {
         for (cookie, expected_cookie, expected_authorization) in [
-            (
-                "test-token",
-                "auth=test-token",
-                Some("Bearer test-token"),
-            ),
+            ("test-token", "auth=test-token", Some("Bearer test-token")),
             (
                 "test-token==",
                 "auth=test-token==",
@@ -613,13 +605,11 @@ mod tests {
             assert_eq!(sent_cookie, expected_cookie);
             // Verify that Authorization: Bearer carries the correct bare token
             // and is strictly omitted when credentials provide only session cookies.
-            let sent_authorization = request
-                .lines()
-                .find_map(|line| {
-                    let (name, value) = line.split_once(':')?;
-                    name.eq_ignore_ascii_case("authorization")
-                        .then_some(value.trim_start())
-                });
+            let sent_authorization = request.lines().find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("authorization")
+                    .then_some(value.trim_start())
+            });
             assert_eq!(
                 sent_authorization, expected_authorization,
                 "Authorization header mismatch for cookie={cookie:?}"
