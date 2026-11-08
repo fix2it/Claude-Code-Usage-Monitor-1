@@ -131,10 +131,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                     lifecycle::reconcile_surfaces();
                 }
                 TIMER_CROSSFADE_SCHEDULE => {
-                    tick_antigravity_crossfade(hwnd, false);
-                    tick_claude_crossfade(hwnd, false);
-                    tick_codex_crossfade(hwnd, false);
-                    super::stop_crossfade_timer_if_idle(hwnd);
+                    tick_animations(hwnd, false);
                 }
                 _ => {}
             }

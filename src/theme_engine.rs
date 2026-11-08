@@ -1350,6 +1350,10 @@ pub struct ThemeRuntime {
     pub countdown: bool,
     pub use_windows_default_font: bool,
     pub show_pace: bool,
+    /// Selected widget view mode (1..3) and its continuous animation phase
+    /// (0.0 = mode 1, 1.0 = mode 2, 2.0 = mode 3).
+    pub view_mode: u8,
+    pub mode_phase: f64,
     pub surface_nest: SurfaceNest,
     pub floating_card_opacity: u8,
     pub antigravity_gemini_enabled: bool,
@@ -1363,6 +1367,7 @@ pub struct ThemeRuntime {
     pub codex_hovered: bool,
     pub codex_main_enabled: bool,
     pub codex_x_enabled: bool,
+    pub opencode_crossfade_opacity: f64,
     host_width: u32,
     host_height: u32,
 }
@@ -1377,6 +1382,8 @@ impl Default for ThemeRuntime {
             countdown: false,
             use_windows_default_font: true,
             show_pace: true,
+            view_mode: 1,
+            mode_phase: 0.0,
             surface_nest: SurfaceNest::Taskbar,
             floating_card_opacity: 85,
             antigravity_gemini_enabled: true,
@@ -1390,6 +1397,7 @@ impl Default for ThemeRuntime {
             codex_hovered: false,
             codex_main_enabled: true,
             codex_x_enabled: false,
+            opencode_crossfade_opacity: 0.0,
             host_width: default_canvas_width(),
             host_height: default_canvas_height(),
         }
@@ -1421,6 +1429,8 @@ impl ThemeRuntime {
             countdown: false,
             use_windows_default_font: true,
             show_pace: true,
+            view_mode: 1,
+            mode_phase: 0.0,
             surface_nest: SurfaceNest::Taskbar,
             floating_card_opacity: 85,
             antigravity_gemini_enabled: agy,
@@ -1434,6 +1444,7 @@ impl ThemeRuntime {
             codex_hovered: false,
             codex_main_enabled: true,
             codex_x_enabled: false,
+            opencode_crossfade_opacity: 0.0,
             host_width: default_canvas_width(),
             host_height: default_canvas_height(),
         }
@@ -1516,6 +1527,21 @@ impl ThemeRuntime {
         self
     }
 
+    pub fn with_view_mode(mut self, view_mode: u8) -> Self {
+        self.view_mode = view_mode.clamp(1, 3);
+        self
+    }
+
+    pub fn with_mode_phase(mut self, phase: f64) -> Self {
+        self.mode_phase = phase.clamp(0.0, 2.0);
+        self
+    }
+
+    pub fn with_opencode_state(mut self, opacity: f64) -> Self {
+        self.opencode_crossfade_opacity = opacity;
+        self
+    }
+
     /// Supply the selected native host's 96-DPI logical dimensions. Theme
     /// expressions consume these as `host.width` and `host.height`.
     pub fn with_host_dimensions(mut self, width: u32, height: u32) -> Self {
@@ -1578,6 +1604,133 @@ pub fn asymmetric_crossfade_opacities(progress_to_hover: f64) -> (f64, f64) {
         0.0
     };
     (normal_opacity, hover_opacity)
+}
+
+/// Dimensionless decomposition of the continuous mode phase.
+/// `text_collapse` drives the `1 -> 2` transition (the numeric text leaves),
+/// `bar_collapse` drives `2 -> 3` (the bar shuts towards the centre and the
+/// percent badge appears). Pure so the choreography is unit-testable without
+/// Win32 or a theme.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ModePhases {
+    pub text_collapse: f64,
+    pub bar_collapse: f64,
+}
+
+pub fn decompose_mode_phase(phase: f64) -> ModePhases {
+    let p = phase.clamp(0.0, 2.0);
+    ModePhases {
+        text_collapse: p.min(1.0),
+        bar_collapse: (p - 1.0).clamp(0.0, 1.0),
+    }
+}
+
+/// Row geometry mirrored from the Compact theme. Stage 5 replaces the theme's
+/// own expressions with the `display.*` bindings below, which makes these the
+/// single source of truth; until then the bindings are simply unused.
+const COMPACT_BAR_SEGMENTS: f64 = 10.0;
+const COMPACT_TEXT_WIDTH: f64 = 62.0;
+const COMPACT_TEXT_WIDTH_WIDE: f64 = 90.0;
+const COMPACT_MARKER_WIDTH: f64 = 10.0;
+const COMPACT_ROW_GAP: f64 = 4.0;
+
+fn compact_bar_full_width(provider_count: usize) -> f64 {
+    (COMPACT_BAR_SEGMENTS / provider_count.max(1) as f64).ceil() * 11.0 - 1.0
+}
+
+/// Geometry and visibility for one widget row at a given mode phase. Pure:
+/// the caller supplies the row's own widths, so no theme constants are baked
+/// into the formulas themselves.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ModeBindings {
+    pub bar_width: f64,
+    pub bar_x: f64,
+    pub text_width: f64,
+    pub text_slide_x: f64,
+    pub text_opacity: f64,
+    pub percent_opacity: f64,
+    pub marker_opacity: f64,
+    pub provider_width: f64,
+}
+
+pub fn mode_row_bindings(
+    phase: f64,
+    bar_full_width: f64,
+    text_full_width: f64,
+    marker_width: f64,
+    gap: f64,
+) -> ModeBindings {
+    let phases = decompose_mode_phase(phase);
+    let bar_width = bar_full_width * (1.0 - phases.bar_collapse);
+    let text_width = text_full_width * (1.0 - phases.text_collapse);
+    ModeBindings {
+        bar_width,
+        bar_x: bar_full_width * phases.bar_collapse / 2.0,
+        text_width,
+        text_slide_x: -text_full_width * phases.text_collapse,
+        text_opacity: 100.0 * (1.0 - phases.text_collapse),
+        percent_opacity: 100.0 * phases.bar_collapse,
+        // Markers stay at their fixed positions in every mode.
+        marker_opacity: 100.0,
+        provider_width: bar_width + text_width + gap + marker_width,
+    }
+}
+
+/// Insert every binding derived from the animation state. Called once per
+/// render, so the theme never duplicates the formulas.
+fn insert_animation_bindings(context: &mut DataContext, runtime: &ThemeRuntime) {
+    let phase = runtime.mode_phase.clamp(0.0, 2.0);
+    let phases = decompose_mode_phase(phase);
+    context.insert("display.view_mode", f64::from(runtime.view_mode));
+    context.insert("display.mode_phase", phase);
+    context.insert("display.mode_text_progress", phases.text_collapse);
+    context.insert("display.mode_bar_progress", phases.bar_collapse);
+
+    let bar = compact_bar_full_width((*runtime).provider_count());
+    let narrow = mode_row_bindings(
+        phase,
+        bar,
+        COMPACT_TEXT_WIDTH,
+        COMPACT_MARKER_WIDTH,
+        COMPACT_ROW_GAP,
+    );
+    let wide = mode_row_bindings(
+        phase,
+        bar,
+        COMPACT_TEXT_WIDTH_WIDE,
+        COMPACT_MARKER_WIDTH,
+        COMPACT_ROW_GAP,
+    );
+    context.insert("display.bar_width", narrow.bar_width);
+    context.insert("display.bar_x", narrow.bar_x);
+    context.insert("display.text_width", narrow.text_width);
+    context.insert("display.text_slide_x", narrow.text_slide_x);
+    context.insert("display.text_opacity", narrow.text_opacity);
+    context.insert("display.percent_opacity", narrow.percent_opacity);
+    context.insert("display.marker_opacity", narrow.marker_opacity);
+    context.insert("display.provider_width", narrow.provider_width);
+    // Rows carrying a window label reserve the wider text block.
+    context.insert("display.text_width_wide", wide.text_width);
+    context.insert("display.text_slide_x_wide", wide.text_slide_x);
+    context.insert("display.provider_width_wide", wide.provider_width);
+
+    // Hover progress per provider. Antigravity's crossfade runs in the
+    // opposite direction (1.0 = normal, 0.0 = hover), so invert it here to
+    // give every provider the same 0..1 hover phase.
+    let clamp = |value: f64| value.clamp(0.0, 1.0);
+    context.insert(
+        "claude.hover_phase",
+        clamp(runtime.claude_crossfade_opacity),
+    );
+    context.insert("codex.hover_phase", clamp(runtime.codex_crossfade_opacity));
+    context.insert(
+        "antigravity.hover_phase",
+        1.0 - clamp(runtime.crossfade_opacity),
+    );
+    context.insert(
+        "opencode.hover_phase",
+        clamp(runtime.opencode_crossfade_opacity),
+    );
 }
 
 impl DataContext {
@@ -1660,6 +1813,7 @@ impl DataContext {
         }
         context.insert("display.countdown", runtime.countdown as u8 as f64);
         context.insert("display.show_pace", runtime.show_pace as u8 as f64);
+        insert_animation_bindings(&mut context, &runtime);
         context.insert(
             "antigravity.gemini.enabled",
             runtime.antigravity_gemini_enabled as u8 as f64,

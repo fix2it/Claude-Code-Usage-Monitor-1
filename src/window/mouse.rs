@@ -241,9 +241,7 @@ pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
     set_antigravity_hover(hwnd, antigravity_hovered);
     super::set_claude_hover(hwnd, claude_hovered);
     super::set_codex_hover(hwnd, codex_hovered);
-    super::tick_antigravity_crossfade(hwnd, true);
-    super::tick_claude_crossfade(hwnd, true);
-    super::tick_codex_crossfade(hwnd, true);
+    super::tick_animations(hwnd, true);
     for _ in 0..4 {
         let target = mouse_target_at(hwnd, lparam);
         let previous = {

@@ -102,16 +102,28 @@ struct AppState {
     pub(super) show_antigravity_external: bool,
     crossfade_opacity: f64,
     antigravity_hovered: bool,
-    crossfade_animation: Option<CrossfadeAnimation>,
+    crossfade_animation: Option<PhaseAnimation>,
     pub(super) antigravity_tile_rect: Option<(f64, f64, f64, f64)>,
     pub(super) claude_hovered: bool,
     pub(super) claude_crossfade_opacity: f64,
-    pub(super) claude_crossfade_animation: Option<CrossfadeAnimation>,
+    pub(super) claude_crossfade_animation: Option<PhaseAnimation>,
     pub(super) claude_tile_rect: Option<(f64, f64, f64, f64)>,
     pub(super) codex_hovered: bool,
     pub(super) codex_crossfade_opacity: f64,
-    pub(super) codex_crossfade_animation: Option<CrossfadeAnimation>,
+    pub(super) codex_crossfade_animation: Option<PhaseAnimation>,
     pub(super) codex_tile_rect: Option<(f64, f64, f64, f64)>,
+    opencode_hovered: bool,
+    opencode_crossfade_opacity: f64,
+    opencode_crossfade_animation: Option<PhaseAnimation>,
+    /// Selected widget view mode (1..3) and its continuous animation phase
+    /// (0.0 = mode 1, 1.0 = mode 2, 2.0 = mode 3).
+    view_mode: u8,
+    mode_phase: f64,
+    /// +1 while the click cycle moves 1 -> 3, -1 while it moves back.
+    /// Read by the click/wheel input wiring in Stage 4.
+    #[allow(dead_code)]
+    mode_direction: i8,
+    mode_animation: Option<PhaseAnimation>,
     accounts: crate::accounts::AccountSettings,
 
     data: Option<AppUsageData>,
@@ -164,14 +176,18 @@ struct AppState {
 }
 
 impl AppState {
-    pub(super) fn is_any_crossfade_animating(&self) -> bool {
+    /// All animation slots share the crossfade timer, including the view-mode
+    /// transition. The timer stops only when every slot has settled.
+    pub(super) fn is_any_animation_active(&self) -> bool {
         self.crossfade_animation.is_some()
             || self.claude_crossfade_animation.is_some()
             || self.codex_crossfade_animation.is_some()
+            || self.opencode_crossfade_animation.is_some()
+            || self.mode_animation.is_some()
     }
 
     pub(super) fn stop_crossfade_timer_if_idle(&self, hwnd: HWND) {
-        if !self.is_any_crossfade_animating() {
+        if !self.is_any_animation_active() {
             unsafe {
                 let _ = kill_controller_timer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
             }
@@ -859,6 +875,9 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         .with_countdown(state.usage_countdown)
         .with_windows_default_font(state.use_windows_default_font)
         .with_show_pace(state.show_pace)
+        .with_view_mode(state.view_mode)
+        .with_mode_phase(state.mode_phase)
+        .with_opencode_state(state.opencode_crossfade_opacity)
         .with_nest(nest)
         .with_floating_card_opacity(opacity)
         .with_antigravity_pools(
@@ -1109,6 +1128,7 @@ fn save_state_settings() {
         persisted.show_antigravity_external = Some(antigravity_on && s.show_antigravity_external);
         persisted.custom_theme_enabled = s.custom_theme_enabled;
         persisted.show_pace = s.show_pace;
+        persisted.view_mode = s.view_mode;
         persisted.active_theme_path = s
             .active_theme_path
             .as_ref()
@@ -2682,6 +2702,13 @@ pub fn run() {
                 codex_crossfade_opacity: 0.0,
                 codex_crossfade_animation: None,
                 codex_tile_rect: None,
+                opencode_hovered: false,
+                opencode_crossfade_opacity: 0.0,
+                opencode_crossfade_animation: None,
+                view_mode: settings.view_mode,
+                mode_phase: (f64::from(settings.view_mode) - 1.0).clamp(0.0, 2.0),
+                mode_direction: 1,
+                mode_animation: None,
                 accounts: settings.accounts.clone(),
                 data: None,
                 poll_interval_ms: settings.poll_interval_ms,
@@ -3494,46 +3521,82 @@ const CODEX_CROSSFADE_DURATION_MS: u64 = 200;
 const CLAUDE_CROSSFADE_DURATION_MS: u64 = 200;
 const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 16;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Easing {
+    /// The original hover crossfade: constant-speed interpolation. Kept so
+    /// the existing widget looks identical until Stage 3 replaces it.
+    Linear,
+    /// Ease-in-out used by the view mode transitions. Constructed by the
+    /// Stage 4 input wiring; until then it is exercised by unit tests.
+    #[allow(dead_code)]
+    Smoothstep,
+}
+
+impl Easing {
+    fn apply(self, progress: f64) -> f64 {
+        let p = progress.clamp(0.0, 1.0);
+        match self {
+            Easing::Linear => p,
+            Easing::Smoothstep => p * p * (3.0 - 2.0 * p),
+        }
+    }
+}
+
+/// Pure interpolation used by every animation slot. Keeping the easing out of
+/// the timer makes the choreography unit-testable without a clock.
+pub(super) fn interpolate_phase(start: f64, target: f64, progress: f64, easing: Easing) -> f64 {
+    start + (target - start) * easing.apply(progress)
+}
+
 #[derive(Clone, Copy, Debug)]
-pub(super) struct CrossfadeAnimation {
-    pub(super) start_opacity: f64,
-    pub(super) target_opacity: f64,
+pub(super) struct PhaseAnimation {
+    pub(super) start: f64,
+    pub(super) target: f64,
     pub(super) start_time: std::time::Instant,
     pub(super) duration: std::time::Duration,
     pub(super) last_rendered: std::time::Instant,
+    pub(super) easing: Easing,
 }
 
-impl CrossfadeAnimation {
+impl PhaseAnimation {
     pub(super) fn new(
-        start_opacity: f64,
-        target_opacity: f64,
+        start: f64,
+        target: f64,
         duration: std::time::Duration,
+        easing: Easing,
     ) -> Self {
         let now = std::time::Instant::now();
         Self {
-            start_opacity,
-            target_opacity,
+            start,
+            target,
             start_time: now,
             duration,
             last_rendered: now,
+            easing,
         }
     }
 
-    pub(super) fn current_opacity(&self) -> (f64, bool) {
+    /// Hover crossfades keep their original linear interpolation.
+    pub(super) fn linear(start: f64, target: f64, duration: std::time::Duration) -> Self {
+        Self::new(start, target, duration, Easing::Linear)
+    }
+
+    pub(super) fn current(&self) -> (f64, bool) {
         let elapsed = self.start_time.elapsed();
         if elapsed >= self.duration || self.duration.is_zero() {
-            (self.target_opacity, false)
+            (self.target, false)
         } else {
             let progress = elapsed.as_secs_f64() / self.duration.as_secs_f64();
-            let opacity =
-                self.start_opacity + (self.target_opacity - self.start_opacity) * progress;
-            (opacity, true)
+            (
+                interpolate_phase(self.start, self.target, progress, self.easing),
+                true,
+            )
         }
     }
 
     pub(super) fn tick_slot(
         slot: &mut Option<Self>,
-        opacity_slot: &mut f64,
+        value_slot: &mut f64,
         throttle: bool,
     ) -> (bool, bool) {
         let Some(mut anim) = *slot else {
@@ -3544,16 +3607,28 @@ impl CrossfadeAnimation {
         {
             return (false, true);
         }
-        let (opacity, more) = anim.current_opacity();
-        *opacity_slot = opacity;
+        let (value, more) = anim.current();
+        *value_slot = value;
         anim.last_rendered = now;
         if more {
             *slot = Some(anim);
         } else {
-            *opacity_slot = anim.target_opacity;
+            *value_slot = anim.target;
             *slot = None;
         }
         (true, more)
+    }
+}
+
+/// Bounce the view-mode cycle at the ends: `1 -> 2 -> 3 -> 2 -> 1 -> ...`.
+/// Consumed by the click/wheel input wiring in Stage 4.
+#[allow(dead_code)]
+pub(super) fn next_view_mode(current: u8, direction: i8) -> (u8, i8) {
+    let next = i16::from(current) + i16::from(direction);
+    match next {
+        4 => (2, -1),
+        0 => (2, 1),
+        n => (n.clamp(1, 3) as u8, direction),
     }
 }
 
@@ -3574,37 +3649,38 @@ pub(super) fn ensure_crossfade_timer(hwnd: HWND) {
     }
 }
 
-pub(super) fn tick_antigravity_crossfade(hwnd: HWND, throttle: bool) {
+/// Advance every animation slot on the shared crossfade timer. One render
+/// per tick instead of one per slot; the slot values are identical to the
+/// three separate tick functions this replaces.
+pub(super) fn tick_animations(hwnd: HWND, throttle: bool) {
     let (should_render, still_animating) = {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {
             return;
         };
-        CrossfadeAnimation::tick_slot(
-            &mut state.crossfade_animation,
-            &mut state.crossfade_opacity,
-            throttle,
-        )
-    };
-    if !still_animating {
-        stop_crossfade_timer_if_idle(hwnd);
-    }
-    if should_render {
-        render_layered();
-    }
-}
-
-pub(super) fn tick_claude_crossfade(hwnd: HWND, throttle: bool) {
-    let (should_render, still_animating) = {
-        let mut state = lock_state();
-        let Some(state) = state.as_mut() else {
-            return;
-        };
-        CrossfadeAnimation::tick_slot(
-            &mut state.claude_crossfade_animation,
-            &mut state.claude_crossfade_opacity,
-            throttle,
-        )
+        let mut render = false;
+        let mut active = false;
+        for (slot, value) in [
+            (&mut state.crossfade_animation, &mut state.crossfade_opacity),
+            (
+                &mut state.claude_crossfade_animation,
+                &mut state.claude_crossfade_opacity,
+            ),
+            (
+                &mut state.codex_crossfade_animation,
+                &mut state.codex_crossfade_opacity,
+            ),
+            (
+                &mut state.opencode_crossfade_animation,
+                &mut state.opencode_crossfade_opacity,
+            ),
+            (&mut state.mode_animation, &mut state.mode_phase),
+        ] {
+            let (changed, more) = PhaseAnimation::tick_slot(slot, value, throttle);
+            render |= changed;
+            active |= more;
+        }
+        (render, active)
     };
     if !still_animating {
         stop_crossfade_timer_if_idle(hwnd);
@@ -3625,7 +3701,7 @@ pub(super) fn set_claude_hover(hwnd: HWND, hovered: bool) {
             state.claude_hovered = hovered;
             if state.is_dual_mode_active(ProviderId::Claude) {
                 let target = if hovered { 1.0 } else { 0.0 };
-                state.claude_crossfade_animation = Some(CrossfadeAnimation::new(
+                state.claude_crossfade_animation = Some(PhaseAnimation::linear(
                     state.claude_crossfade_opacity,
                     target,
                     std::time::Duration::from_millis(CLAUDE_CROSSFADE_DURATION_MS),
@@ -3636,26 +3712,6 @@ pub(super) fn set_claude_hover(hwnd: HWND, hovered: bool) {
     }
     if should_animate {
         ensure_crossfade_timer(hwnd);
-        render_layered();
-    }
-}
-
-pub(super) fn tick_codex_crossfade(hwnd: HWND, throttle: bool) {
-    let (should_render, still_animating) = {
-        let mut state = lock_state();
-        let Some(state) = state.as_mut() else {
-            return;
-        };
-        CrossfadeAnimation::tick_slot(
-            &mut state.codex_crossfade_animation,
-            &mut state.codex_crossfade_opacity,
-            throttle,
-        )
-    };
-    if !still_animating {
-        stop_crossfade_timer_if_idle(hwnd);
-    }
-    if should_render {
         render_layered();
     }
 }
@@ -3672,7 +3728,7 @@ pub(super) fn set_codex_hover(hwnd: HWND, hovered: bool) {
             state.codex_hovered = hovered;
             if state.is_dual_mode_active(ProviderId::Codex) {
                 let target = if hovered { 1.0 } else { 0.0 };
-                state.codex_crossfade_animation = Some(CrossfadeAnimation::new(
+                state.codex_crossfade_animation = Some(PhaseAnimation::linear(
                     state.codex_crossfade_opacity,
                     target,
                     std::time::Duration::from_millis(CODEX_CROSSFADE_DURATION_MS),
@@ -3702,7 +3758,7 @@ pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
             state.antigravity_hovered = hovered;
             if any_pool {
                 let target = if hovered { 0.0 } else { 1.0 };
-                state.crossfade_animation = Some(CrossfadeAnimation::new(
+                state.crossfade_animation = Some(PhaseAnimation::linear(
                     state.crossfade_opacity,
                     target,
                     std::time::Duration::from_millis(ANTIGRAVITY_CROSSFADE_DURATION_MS),
@@ -3743,6 +3799,10 @@ fn reload_external_settings(hwnd: HWND) {
         state.usage_countdown = settings.usage_countdown;
         state.use_windows_default_font = settings.use_windows_default_font;
         state.show_pace = settings.show_pace;
+        // An external settings reload replaces the transient view state too.
+        state.view_mode = settings.view_mode;
+        state.mode_phase = (f64::from(settings.view_mode) - 1.0).clamp(0.0, 2.0);
+        state.mode_animation = None;
         let any_pool = (state.show_antigravity_gemini || state.show_antigravity_external)
             && state.providers.contains(ProviderId::Antigravity);
         if !any_pool {
@@ -3761,6 +3821,12 @@ fn reload_external_settings(hwnd: HWND) {
             state.claude_hovered = false;
             state.claude_crossfade_opacity = 0.0;
             state.claude_crossfade_animation = None;
+        }
+        let opencode_active = state.providers.contains(ProviderId::OpenCode);
+        if !opencode_active {
+            state.opencode_hovered = false;
+            state.opencode_crossfade_opacity = 0.0;
+            state.opencode_crossfade_animation = None;
         }
         state.stop_crossfade_timer_if_idle(hwnd);
         state.antigravity_tile_rect = None;
@@ -4605,25 +4671,94 @@ mod credential_watch_worker_tests {
 }
 
 #[cfg(test)]
-mod antigravity_crossfade_tests {
-    use super::CrossfadeAnimation;
+mod phase_animation_tests {
+    use super::{interpolate_phase, next_view_mode, Easing, PhaseAnimation};
     use std::time::Duration;
 
     #[test]
     fn crossfade_animation_interpolates_and_completes() {
-        let anim = CrossfadeAnimation::new(1.0, 0.0, Duration::from_millis(0));
-        let (opacity, more) = anim.current_opacity();
-        assert_eq!(opacity, 0.0);
+        let anim = PhaseAnimation::linear(1.0, 0.0, Duration::from_millis(0));
+        let (value, more) = anim.current();
+        assert_eq!(value, 0.0);
         assert!(!more);
 
-        let anim = CrossfadeAnimation::new(0.0, 1.0, Duration::from_secs(10));
-        let (opacity, more) = anim.current_opacity();
-        assert!(opacity < 0.1);
+        let anim = PhaseAnimation::linear(0.0, 1.0, Duration::from_secs(10));
+        let (value, more) = anim.current();
+        assert!(value < 0.1);
         assert!(more);
 
-        let anim_return = CrossfadeAnimation::new(0.0, 1.0, Duration::from_millis(0));
-        let (opacity, more) = anim_return.current_opacity();
-        assert_eq!(opacity, 1.0);
+        let anim_return = PhaseAnimation::linear(0.0, 1.0, Duration::from_millis(0));
+        let (value, more) = anim_return.current();
+        assert_eq!(value, 1.0);
         assert!(!more);
+    }
+
+    #[test]
+    fn linear_easing_matches_the_original_hover_crossfade() {
+        for start in [0.0, 0.25, 1.0] {
+            for target in [0.0, 1.0] {
+                assert_eq!(interpolate_phase(start, target, 0.0, Easing::Linear), start);
+                assert_eq!(
+                    interpolate_phase(start, target, 1.0, Easing::Linear),
+                    target
+                );
+                let mid = interpolate_phase(start, target, 0.5, Easing::Linear);
+                assert_eq!(mid, (start + target) / 2.0);
+            }
+        }
+    }
+
+    #[test]
+    fn smoothstep_eases_in_out_symmetrically_and_stays_monotonic() {
+        assert_eq!(interpolate_phase(0.0, 1.0, 0.0, Easing::Smoothstep), 0.0);
+        assert_eq!(interpolate_phase(0.0, 1.0, 1.0, Easing::Smoothstep), 1.0);
+        assert_eq!(interpolate_phase(0.0, 1.0, 0.5, Easing::Smoothstep), 0.5);
+        for step in [0.1, 0.2, 0.3, 0.4] {
+            let early = interpolate_phase(0.0, 1.0, step, Easing::Smoothstep);
+            let late = interpolate_phase(0.0, 1.0, 1.0 - step, Easing::Smoothstep);
+            assert!(
+                (early + late - 1.0).abs() < 1e-9,
+                "{step}: {early} + {late}"
+            );
+        }
+        let mut previous = 0.0_f64;
+        for i in 0..=100 {
+            let value = interpolate_phase(0.0, 1.0, i as f64 / 100.0, Easing::Smoothstep);
+            assert!(value >= previous, "{i}: {value} < {previous}");
+            assert!((0.0..=1.0).contains(&value));
+            previous = value;
+        }
+        assert_eq!(interpolate_phase(0.0, 1.0, -1.0, Easing::Smoothstep), 0.0);
+        assert_eq!(interpolate_phase(0.0, 1.0, 2.0, Easing::Smoothstep), 1.0);
+    }
+
+    #[test]
+    fn interrupting_an_animation_restarts_from_the_current_value() {
+        let reached = interpolate_phase(0.0, 2.0, 0.5, Easing::Smoothstep);
+        let redirected =
+            PhaseAnimation::new(reached, 0.0, Duration::from_millis(200), Easing::Smoothstep);
+        assert_eq!(redirected.start, reached);
+        assert_eq!(redirected.target, 0.0);
+        assert_eq!(redirected.easing, Easing::Smoothstep);
+    }
+
+    #[test]
+    fn view_mode_cycle_bounces_1_2_3_2_1() {
+        let mut mode = 1u8;
+        let mut direction = 1i8;
+        let mut seen = vec![mode];
+        for _ in 0..8 {
+            let (next, dir) = next_view_mode(mode, direction);
+            mode = next;
+            direction = dir;
+            seen.push(mode);
+        }
+        assert_eq!(seen, vec![1, 2, 3, 2, 1, 2, 3, 2, 1]);
+        // At mode 1 the cycle has just reversed, so the next step goes up.
+        assert_eq!(direction, -1);
+        assert_eq!(next_view_mode(3, 1), (2, -1));
+        assert_eq!(next_view_mode(1, -1), (2, 1));
+        assert_eq!(next_view_mode(2, 1), (3, 1));
+        assert_eq!(next_view_mode(2, -1), (1, -1));
     }
 }

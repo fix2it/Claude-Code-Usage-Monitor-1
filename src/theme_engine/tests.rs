@@ -4006,6 +4006,108 @@ fn monthly_expected_falls_back_to_a_fixed_month_without_a_period_start() {
 }
 
 #[test]
+fn mode_phase_decomposition_is_exact_and_clamped() {
+    for phase in [-1.0_f64, 0.0, 0.25, 1.0, 1.5, 2.0, 3.0] {
+        let p = phase.clamp(0.0, 2.0);
+        let phases = decompose_mode_phase(phase);
+        assert_eq!(phases.text_collapse, p.min(1.0), "{phase}");
+        assert_eq!(phases.bar_collapse, (p - 1.0).clamp(0.0, 1.0), "{phase}");
+    }
+    assert_eq!(decompose_mode_phase(0.0).bar_collapse, 0.0);
+    assert_eq!(decompose_mode_phase(1.0).text_collapse, 1.0);
+    assert_eq!(decompose_mode_phase(1.0).bar_collapse, 0.0);
+    assert_eq!(decompose_mode_phase(2.0).bar_collapse, 1.0);
+}
+
+#[test]
+fn animation_bindings_follow_the_mode_phase() {
+    for (phase, view_mode) in [(0.0, 1u8), (0.5, 2), (1.0, 2), (1.5, 3), (2.0, 3)] {
+        let runtime = ThemeRuntime::default()
+            .with_view_mode(view_mode)
+            .with_mode_phase(phase);
+        let bar = compact_bar_full_width(runtime.provider_count());
+        let expected = mode_row_bindings(
+            phase,
+            bar,
+            COMPACT_TEXT_WIDTH,
+            COMPACT_MARKER_WIDTH,
+            COMPACT_ROW_GAP,
+        );
+        let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+        assert_eq!(context.get("display.view_mode"), Some(f64::from(view_mode)));
+        assert_eq!(context.get("display.mode_phase"), Some(phase));
+        let a = phase.min(1.0);
+        let b = (phase - 1.0).clamp(0.0, 1.0);
+        assert_eq!(context.get("display.mode_text_progress"), Some(a));
+        assert_eq!(context.get("display.mode_bar_progress"), Some(b));
+        assert_eq!(context.get("display.text_opacity"), Some(100.0 * (1.0 - a)));
+        assert_eq!(context.get("display.percent_opacity"), Some(100.0 * b));
+        assert_eq!(context.get("display.bar_width"), Some(expected.bar_width));
+        assert_eq!(context.get("display.bar_x"), Some(expected.bar_x));
+        assert_eq!(context.get("display.text_width"), Some(expected.text_width));
+        assert_eq!(
+            context.get("display.provider_width"),
+            Some(expected.provider_width)
+        );
+        // Markers stay at their fixed positions in every mode.
+        assert_eq!(context.get("display.marker_opacity"), Some(100.0));
+    }
+}
+
+#[test]
+fn mode_row_bindings_match_the_planned_geometry() {
+    let bar = 109.0;
+    for phase in [0.0_f64, 0.5, 1.0, 1.5, 2.0] {
+        let bindings = mode_row_bindings(phase, bar, 62.0, 10.0, 4.0);
+        let a = phase.min(1.0);
+        let b = (phase - 1.0).clamp(0.0, 1.0);
+        assert_eq!(bindings.bar_width, bar * (1.0 - b));
+        assert_eq!(bindings.bar_x, bar * b / 2.0);
+        assert_eq!(bindings.text_width, 62.0 * (1.0 - a));
+        assert_eq!(bindings.text_slide_x, -62.0 * a);
+        assert_eq!(bindings.text_opacity, 100.0 * (1.0 - a));
+        assert_eq!(bindings.percent_opacity, 100.0 * b);
+        assert_eq!(bindings.marker_opacity, 100.0);
+        assert_eq!(
+            bindings.provider_width,
+            bindings.bar_width + bindings.text_width + 14.0
+        );
+        assert!(bindings.bar_x >= 0.0);
+        assert!(bindings.bar_x + bindings.bar_width <= bar + 1e-9);
+    }
+    let full = mode_row_bindings(0.0, bar, 62.0, 10.0, 4.0);
+    let compact = mode_row_bindings(2.0, bar, 62.0, 10.0, 4.0);
+    assert_eq!(full.bar_width, bar);
+    assert_eq!(full.percent_opacity, 0.0);
+    assert_eq!(compact.bar_width, 0.0);
+    assert_eq!(compact.percent_opacity, 100.0);
+    assert_eq!(compact.text_width, 0.0);
+}
+
+#[test]
+fn hover_phases_are_independent_and_antigravity_is_inverted() {
+    let runtime = ThemeRuntime::default()
+        .with_claude_state(true, true, false, 0.75)
+        .with_codex_state(false, true, false, 0.25)
+        .with_antigravity_pools(true, true, 0.4)
+        .with_opencode_state(0.9);
+    let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+    assert_eq!(context.get("claude.hover_phase"), Some(0.75));
+    assert_eq!(context.get("codex.hover_phase"), Some(0.25));
+    // Antigravity's crossfade runs 1 = normal, 0 = hover.
+    assert!((context.get("antigravity.hover_phase").unwrap() - 0.6).abs() < 1e-9);
+    assert_eq!(context.get("opencode.hover_phase"), Some(0.9));
+
+    // Out-of-range values are clamped; the other provider phases stay put.
+    let runtime = ThemeRuntime::default()
+        .with_claude_state(false, true, false, 5.0)
+        .with_codex_state(false, true, false, -1.0);
+    let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+    assert_eq!(context.get("claude.hover_phase"), Some(1.0));
+    assert_eq!(context.get("codex.hover_phase"), Some(0.0));
+}
+
+#[test]
 fn show_pace_binding_follows_the_setting() {
     let defaults = crate::app_settings::SettingsFile::default();
     assert!(defaults.show_pace);

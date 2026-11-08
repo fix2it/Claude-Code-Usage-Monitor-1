@@ -77,6 +77,10 @@ pub struct SettingsFile {
     pub use_windows_default_font: bool,
     #[serde(default = "default_true")]
     pub show_pace: bool,
+    /// Widget view mode: 1 = full, 2 = bars only, 3 = compact percent.
+    /// Persisted so the widget starts in the last selected view.
+    #[serde(default = "default_view_mode")]
+    pub view_mode: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_theme_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -146,6 +150,7 @@ impl Default for SettingsFile {
             usage_countdown: false,
             use_windows_default_font: true,
             show_pace: true,
+            view_mode: default_view_mode(),
             active_theme_path: None,
             dashboard_width: None,
             dashboard_height: None,
@@ -190,6 +195,11 @@ impl SettingsFile {
         self.custom_theme_enabled = true;
         self.dashboard_width = valid_dashboard_dimension(self.dashboard_width);
         self.dashboard_height = valid_dashboard_dimension(self.dashboard_height);
+        // An unknown or hand-edited mode must not leave the widget in a state
+        // no theme can draw.
+        if !(1..=3).contains(&self.view_mode) {
+            self.view_mode = default_view_mode();
+        }
     }
 
     pub fn legacy_placement(&self) -> Option<LegacyPlacement> {
@@ -497,6 +507,9 @@ fn default_poll_interval() -> u32 {
 fn default_true() -> bool {
     true
 }
+fn default_view_mode() -> u8 {
+    1
+}
 fn valid_dashboard_dimension(value: Option<f32>) -> Option<f32> {
     value.filter(|value| value.is_finite() && (64.0..=16_384.0).contains(value))
 }
@@ -712,6 +725,44 @@ mod tests {
             let loaded = decode_settings(&json.to_string()).unwrap();
             assert_eq!(loaded.show_pace, show_pace);
         }
+    }
+
+    #[test]
+    fn view_mode_defaults_to_full_and_round_trips() {
+        let settings = SettingsFile::default();
+        assert_eq!(settings.view_mode, 1);
+        assert_eq!(settings_json(&settings)["view_mode"], 1);
+
+        // Older settings files have no view_mode at all.
+        let legacy = decode_settings(r#"{"poll_interval_ms":900000}"#).unwrap();
+        assert_eq!(legacy.view_mode, 1);
+
+        for mode in [1u8, 2, 3] {
+            let settings = SettingsFile {
+                view_mode: mode,
+                ..Default::default()
+            };
+            let json = settings_json(&settings);
+            assert_eq!(json["view_mode"], mode);
+            let loaded = decode_settings(&json.to_string()).unwrap();
+            assert_eq!(loaded.view_mode, mode);
+        }
+    }
+
+    #[test]
+    fn invalid_view_modes_fall_back_to_full() {
+        for value in ["0", "4", "255"] {
+            let json = format!(r#"{{"view_mode":{value}}}"#);
+            let mut loaded = decode_settings(&json).unwrap();
+            loaded.normalize();
+            assert_eq!(loaded.view_mode, 1, "{json}");
+        }
+        let mut settings = SettingsFile {
+            view_mode: 9,
+            ..Default::default()
+        };
+        settings.normalize();
+        assert_eq!(settings.view_mode, 1);
     }
 
     #[test]
