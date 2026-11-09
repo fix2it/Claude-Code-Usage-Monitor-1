@@ -58,6 +58,9 @@ pub(super) unsafe extern "system" fn controller_wnd_proc(
             LRESULT(0)
         }
         WM_DESTROY => {
+            // Stop the multimedia timer before its target window disappears;
+            // an already-posted tick is harmless, but no new ones should fire.
+            super::animation_timer::stop(hwnd);
             // Withdraw the published target before destroying surfaces, so their
             // destruction notifications cannot schedule another recovery.
             CONTROLLER_HWND.store(0, Ordering::Relaxed);
@@ -121,7 +124,9 @@ pub(super) unsafe extern "system" fn controller_wnd_proc(
             LRESULT(0)
         }
         WM_APP_SHELL_CHANGED => dispatch_to_surface(wparam.0 as u32, WPARAM(0), LPARAM(0)),
-        WM_TIMER | WM_COMMAND => dispatch_to_surface(msg, wparam, lparam),
+        WM_TIMER | WM_COMMAND | native_interop::WM_APP_ANIMATION_TICK => {
+            dispatch_to_surface(msg, wparam, lparam)
+        }
         _ if msg == taskbar_created_message() => {
             let _ = PostMessageW(Some(hwnd), WM_APP_SHELL_READY, WPARAM(0), LPARAM(0));
             LRESULT(0)
@@ -192,6 +197,8 @@ pub(super) fn surface_destroyed(hwnd: HWND) {
 }
 
 pub(super) unsafe fn destroy_surface(hwnd: HWND) {
+    // Free the cached DIB/DC before the HWND can be recycled for a new surface.
+    super::positioning::release_surface_bitmap(hwnd);
     let previous = DESTROYING_SURFACE.replace(true);
     if IsWindow(Some(hwnd)).as_bool() {
         let _ = DestroyWindow(hwnd);

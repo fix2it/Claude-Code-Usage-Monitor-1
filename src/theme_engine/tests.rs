@@ -4362,22 +4362,61 @@ fn compact_dual_mode_geometry_morphs_with_hover_phase() {
     assert_eq!(geometry(weekly, "y", 0.0), 16.0);
     assert_eq!(geometry(weekly, "y", 1.0), 13.0);
 
-    // Text slides up on hover and comes back down when the hover is removed.
-    let normal_text = by_id("claude-main-text-dark-normal");
-    let hover_text = by_id("claude-main-text-dark-hover");
-    assert_eq!(geometry(normal_text, "y", 0.0), 7.0);
-    assert_eq!(geometry(normal_text, "y", 1.0), -6.0);
-    assert_eq!(geometry(hover_text, "y", 0.0), 20.0);
-    assert_eq!(geometry(hover_text, "y", 1.0), 7.0);
-    // The same direction holds for every provider and both themes.
-    for phase in [0.0, 0.5, 1.0] {
-        for id in [
-            "antigravity-gemini-text-light-normal",
-            "codex-x-text-dark-normal",
-        ] {
-            let text = by_id(id);
-            let base = geometry(text, "y", 0.0);
-            assert!(geometry(text, "y", phase) <= base + 1e-9, "{id}");
+    // Labels stay in place: the substitution is an in-place crossfade, not a
+    // positional slide. Every label keeps the exact y of its row's o/x marker
+    // at every phase, so the numbers never jump relative to the markers.
+    for (marker_id, normal_id, hover_id) in [
+        (
+            "claude-main-marker-dark-normal",
+            "claude-main-text-dark-normal",
+            "claude-main-text-dark-hover",
+        ),
+        (
+            "claude-x-marker-dark-normal",
+            "claude-x-text-dark-normal",
+            "claude-x-text-dark-hover",
+        ),
+        (
+            "codex-main-marker-light-normal",
+            "codex-main-text-light-normal",
+            "codex-main-text-light-hover",
+        ),
+        (
+            "codex-x-marker-light-normal",
+            "codex-x-text-light-normal",
+            "codex-x-text-light-hover",
+        ),
+    ] {
+        let marker_y = geometry(by_id(marker_id), "y", 0.0);
+        for phase in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            assert_eq!(
+                geometry(by_id(marker_id), "y", phase),
+                marker_y,
+                "{marker_id}"
+            );
+            for id in [normal_id, hover_id] {
+                let text = by_id(id);
+                assert_eq!(geometry(text, "y", phase), marker_y, "{id} at {phase}");
+                assert!(!text.y.0.contains("hover_phase"), "{id}");
+            }
+        }
+    }
+
+    // Antigravity has no markers, but every one of its labels is fixed too.
+    let antigravity_labels = children
+        .iter()
+        .filter(|o| {
+            o.id.starts_with("antigravity-")
+                && o.id.contains("-text-")
+                && matches!(o.content, SceneContent::Text { .. })
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(antigravity_labels.len(), 8);
+    for text in antigravity_labels {
+        assert!(!text.y.0.contains("hover_phase"), "{}", text.id);
+        let base = geometry(text, "y", 0.0);
+        for phase in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            assert_eq!(geometry(text, "y", phase), base, "{}", text.id);
         }
     }
 
@@ -4391,6 +4430,99 @@ fn compact_dual_mode_geometry_morphs_with_hover_phase() {
         assert!(!marker.y.0.contains("hover_phase"), "{id}");
         assert!(!marker.height.0.contains("hover_phase"), "{id}");
         assert!(!marker.x.0.contains("hover_phase"), "{id}");
+    }
+}
+
+#[test]
+fn compact_marker_and_label_rows_share_the_same_y() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    for provider in ["claude", "codex"] {
+        let marker_ys = children
+            .iter()
+            .filter(|o| o.id.starts_with(&format!("{provider}-")) && o.id.contains("-marker-"))
+            .map(|o| o.y.0.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        let label_ys = children
+            .iter()
+            .filter(|o| {
+                o.id.starts_with(&format!("{provider}-"))
+                    && o.id.contains("-text-")
+                    && matches!(o.content, SceneContent::Text { .. })
+            })
+            .map(|o| o.y.0.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(marker_ys, label_ys, "{provider} marker/label rows diverged");
+        assert_eq!(
+            marker_ys,
+            std::collections::BTreeSet::from(["7".to_string(), "26".to_string()]),
+            "{provider} rows moved off their fixed positions"
+        );
+        assert!(marker_ys.iter().all(|y| !y.contains("hover_phase")));
+    }
+}
+
+/// The lowercase `x` glyph has different bearings and a different width than
+/// `o`: left alignment put `x` ~1 px LEFT of `o`, right alignment put it ~1 px
+/// RIGHT. Centring both glyphs inside one shared box puts their centres on the
+/// same vertical line (measured residual 0.21 px across 12 renders). An extra
+/// `-1` column offset was tried and then removed by the owner; the centred
+/// glyphs already clear the gauge column, which starts at `x = 12`.
+#[test]
+fn compact_markers_are_centered_and_clear_of_the_gauges() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let markers = theme.surfaces[0]
+        .children
+        .iter()
+        .filter(|o| o.id.contains("-marker-"))
+        .collect::<Vec<_>>();
+    assert_eq!(markers.len(), 16);
+    let boxes = markers
+        .iter()
+        .map(|o| (o.x.0.clone(), o.width.0.clone()))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        boxes,
+        std::collections::BTreeSet::from([("0".to_string(), "10".to_string())]),
+        "markers no longer share one fixed box"
+    );
+    for marker in &markers {
+        match &marker.content {
+            SceneContent::Text {
+                align, template, ..
+            } => {
+                assert_eq!(*align, TextAlign::Center, "{}", marker.id);
+                assert!(matches!(template.as_str(), "o" | "x"), "{}", marker.id);
+            }
+            other => panic!("{} is not text: {other:?}", marker.id),
+        }
+    }
+    let templates = markers
+        .iter()
+        .map(|o| match &o.content {
+            SceneContent::Text { template, .. } => template.as_str(),
+            _ => unreachable!(),
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(templates, std::collections::BTreeSet::from(["o", "x"]));
+
+    // Claude/Codex gauges start at x = 12, so the marker box ending at x = 9
+    // leaves a 3 px structural gap (glyph ink is centred inside the box).
+    // Antigravity gauges are parent-relative and carry no explicit `x`.
+    let gauges = theme.surfaces[0]
+        .children
+        .iter()
+        .filter(|o| {
+            (o.id.starts_with("claude-") || o.id.starts_with("codex-"))
+                && o.id.contains("-5h-")
+                && matches!(o.content, SceneContent::Progress { .. })
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(gauges.len(), 16);
+    for gauge in gauges {
+        assert_eq!(gauge.x.0, "12", "{}", gauge.id);
     }
 }
 
@@ -4460,8 +4592,8 @@ fn claude_dual_mode_and_crossfade_context_variables() {
     assert_eq!(ctx.get("claude.dual_mode"), Some(1.0));
     assert_eq!(ctx.get("claude.crossfade_opacity"), Some(0.75));
     assert_eq!(ctx.get("claude.normal.opacity"), Some(0.0));
-    let hover_opacity = ctx.get("claude.hover.opacity").expect("hover opacity");
-    assert!((hover_opacity - 2.0 / 3.0).abs() < 1e-6);
+    // The softened ramp reaches full hover opacity well before the end.
+    assert_eq!(ctx.get("claude.hover.opacity"), Some(1.0));
 }
 
 #[test]
@@ -4471,13 +4603,9 @@ fn antigravity_normal_and_hover_opacity_context_variables() {
     let ctx = DataContext::from_usage_with_runtime(None, &canvas, runtime);
     assert_eq!(ctx.get("antigravity.crossfade_opacity"), Some(0.3));
     assert_eq!(ctx.get("antigravity.normal.opacity"), Some(0.0));
-    let hover_opacity = ctx.get("antigravity.hover.opacity").expect("hover opacity");
-    assert!((hover_opacity - 0.6).abs() < 1e-6);
+    assert_eq!(ctx.get("antigravity.hover.opacity"), Some(1.0));
     assert_eq!(ctx.get("antigravity.gemini.opacity"), Some(0.0));
-    let external_opacity = ctx
-        .get("antigravity.external.opacity")
-        .expect("external opacity");
-    assert!((external_opacity - 0.6).abs() < 1e-6);
+    assert_eq!(ctx.get("antigravity.external.opacity"), Some(1.0));
 }
 
 #[test]
@@ -4491,56 +4619,235 @@ fn codex_dual_mode_and_crossfade_context_variables() {
     assert_eq!(ctx.get("codex.dual_mode"), Some(1.0));
     assert_eq!(ctx.get("codex.crossfade_opacity"), Some(0.75));
     assert_eq!(ctx.get("codex.normal.opacity"), Some(0.0));
-    let hover_opacity = ctx.get("codex.hover.opacity").expect("hover opacity");
-    assert!((hover_opacity - 2.0 / 3.0).abs() < 1e-6);
+    assert_eq!(ctx.get("codex.hover.opacity"), Some(1.0));
 }
 
 #[test]
 fn test_asymmetric_crossfade_opacities_boundaries_and_minimal_overlap() {
     use crate::theme_engine::asymmetric_crossfade_opacities;
 
-    // Normal steady state
-    let (normal, hover) = asymmetric_crossfade_opacities(0.0);
-    assert_eq!(normal, 1.0);
-    assert_eq!(hover, 0.0);
+    // Steady states and exact ramp anchors of the softened curve.
+    assert_eq!(asymmetric_crossfade_opacities(0.0), (1.0, 0.0));
+    assert_eq!(asymmetric_crossfade_opacities(1.0), (0.0, 1.0));
+    let (n, h) = asymmetric_crossfade_opacities(0.45);
+    assert_eq!(n, 0.0);
+    assert!((h - 0.35 / 0.55).abs() < 1e-9, "{h}");
+    assert_eq!(asymmetric_crossfade_opacities(0.65), (0.0, 1.0));
 
-    // Halfway through normal fade out (0.175)
-    let (normal, hover) = asymmetric_crossfade_opacities(0.175);
-    assert!((normal - 0.5).abs() < 1e-6);
-    assert_eq!(hover, 0.0);
-
-    // Lead-in threshold for hover (0.25)
-    let (normal, hover) = asymmetric_crossfade_opacities(0.25);
-    assert!((normal - (1.0 - 0.25 / 0.35)).abs() < 1e-6);
-    assert_eq!(hover, 0.0);
-
-    // Handover midpoint (0.30)
-    let (normal, hover) = asymmetric_crossfade_opacities(0.30);
-    assert!((normal - (1.0 - 0.30 / 0.35)).abs() < 1e-6);
-    assert!((hover - (0.05 / 0.75)).abs() < 1e-6);
-
-    // Normal completely faded (0.35)
-    let (normal, hover) = asymmetric_crossfade_opacities(0.35);
-    assert_eq!(normal, 0.0);
-    assert!((hover - (0.10 / 0.75)).abs() < 1e-6);
-
-    // Hover steady state
-    let (normal, hover) = asymmetric_crossfade_opacities(1.0);
-    assert_eq!(normal, 0.0);
-    assert_eq!(hover, 1.0);
-
-    // Defensive clamping
+    // Defensive clamping.
     assert_eq!(asymmetric_crossfade_opacities(-0.5), (1.0, 0.0));
     assert_eq!(asymmetric_crossfade_opacities(1.5), (0.0, 1.0));
 
-    // Overlap verification: at no point during transition do both layers have high visibility (no double-exposure)
+    // The middle of the transition must stay readable and must never show
+    // both layers at full opacity. The old 0.35/0.25 ramp bottomed out near
+    // 0.21 combined opacity; the softened one stays above ~0.63.
+    let mut min_combined = 1.0_f64;
     for step in 0..=100 {
         let p = step as f64 / 100.0;
         let (n, h) = asymmetric_crossfade_opacities(p);
-        let min_overlap = n.min(h);
-        assert!(
-            min_overlap < 0.15,
-            "Excessive overlap at p = {p}: normal = {n}, hover = {h}, min = {min_overlap}"
+        assert!((0.0..=1.0).contains(&n), "p={p}: normal={n}");
+        assert!((0.0..=1.0).contains(&h), "p={p}: hover={h}");
+        assert!(n + h <= 1.0 + 1e-9, "p={p}: {n} + {h} > 1");
+        assert!(n.min(h) < 0.4, "p={p}: both layers too visible: {n}/{h}");
+        min_combined = min_combined.min(n + h);
+    }
+    assert!(
+        min_combined > 0.6,
+        "brightness dip is still too deep: {min_combined}"
+    );
+    // The incoming text is clearly readable halfway through.
+    let (_, mid_hover) = asymmetric_crossfade_opacities(0.5);
+    assert!(
+        mid_hover > 0.7,
+        "mid-transition text too faint: {mid_hover}"
+    );
+}
+
+/// Composite a premultiplied `0xAARRGGBB` render onto a taskbar-like solid
+/// background and write an opaque RGB PNG. Used only by the manual preview
+/// test below.
+fn write_preview_png(rendered: &RenderedTheme, path: &std::path::Path, dark: bool) {
+    let bg = if dark {
+        (38u32, 26u32, 20u32)
+    } else {
+        (243u32, 243u32, 243u32)
+    };
+    let mut rgb = Vec::with_capacity(rendered.pixels.len() * 3);
+    for &pixel in &rendered.pixels {
+        let a = (pixel >> 24) & 0xff;
+        let r = (pixel >> 16) & 0xff;
+        let g = (pixel >> 8) & 0xff;
+        let b = pixel & 0xff;
+        let (r, g, b) = if a > 0 {
+            (
+                (r * 255 / a).min(255),
+                (g * 255 / a).min(255),
+                (b * 255 / a).min(255),
+            )
+        } else {
+            (0, 0, 0)
+        };
+        let alpha = a as f64 / 255.0;
+        let mix = |colour: u32, background: u32| {
+            (colour as f64 * alpha + background as f64 * (1.0 - alpha)).round() as u8
+        };
+        rgb.push(mix(r, bg.0));
+        rgb.push(mix(g, bg.1));
+        rgb.push(mix(b, bg.2));
+    }
+    image::RgbImage::from_raw(rendered.width, rendered.height, rgb)
+        .expect("pixel buffer matches the render size")
+        .save(path)
+        .expect("PNG encoder is available");
+}
+
+/// Manual visual verification helper, deliberately excluded from the normal
+/// test run. Run with:
+///   cargo test render_hover_previews -- --ignored --nocapture
+/// It renders the Compact theme at hover phases 0 / 0.5 / 1, for both dark
+/// and light system themes, at 100% and 150% DPI. Unlike a screen recording
+/// these are deterministic: the phase is supplied directly and cannot be
+/// missed by a 30 fps capture.
+#[test]
+#[ignore = "manual visual verification; writes PNG previews to the temp directory"]
+fn render_hover_previews() {
+    use crate::models::{AppUsageData, UsageData, UsageSection};
+
+    let raw = include_str!("../themes/compact-fluent-quad.json");
+    let out = std::env::temp_dir().join("opencode").join("s3-previews");
+    std::fs::create_dir_all(&out).unwrap();
+
+    let section = |percentage: f64| UsageSection {
+        available: true,
+        percentage,
+        resets_at: None,
+    };
+    let data = AppUsageData::from_iter(ProviderId::ALL.into_iter().map(|provider| {
+        (
+            provider,
+            UsageData {
+                session: section(12.0),
+                weekly: section(45.0),
+                monthly: Some(section(60.0)),
+                ..Default::default()
+            },
+        )
+    }));
+
+    for dark in [true, false] {
+        // `system.dark` normally comes from the Windows registry. Replacing
+        // the token inside expression strings forces one colour variant
+        // deterministically: `1 - system.dark` becomes `1 - 1` / `1 - 0`.
+        let forced = raw.replace("system.dark", if dark { "1" } else { "0" });
+        let theme: ThemeDocument = serde_json::from_str(&forced).unwrap();
+        assert!(theme.validate().is_empty(), "{:?}", theme.validate());
+
+        for phase in [0.0_f64, 0.5, 1.0] {
+            for scale in [1.0_f64, 1.5] {
+                let runtime = ThemeRuntime::from_providers(ProviderSet::from_enabled([
+                    ProviderId::Claude,
+                    ProviderId::Codex,
+                    ProviderId::Antigravity,
+                    ProviderId::OpenCode,
+                ]))
+                .with_claude_state(true, true, true, phase)
+                .with_codex_state(true, true, true, phase)
+                // Antigravity's hover phase is inverted from its crossfade.
+                .with_antigravity_pools(true, true, 1.0 - phase)
+                .with_opencode_state(phase)
+                .with_show_pace(true);
+
+                let rendered = render_theme_surface_with_runtime_at_scale(
+                    &theme,
+                    0,
+                    Some(&data),
+                    runtime,
+                    scale,
+                );
+                assert!(rendered.width > 0 && rendered.height > 0);
+                assert!(
+                    rendered.warnings.is_empty(),
+                    "render warnings at phase {phase}, scale {scale}: {:?}",
+                    rendered.warnings
+                );
+                let name = format!(
+                    "phase-{:03.0}-{}-dpi-{:03.0}.png",
+                    phase * 100.0,
+                    if dark { "dark" } else { "light" },
+                    scale * 100.0
+                );
+                let path = out.join(name);
+                write_preview_png(&rendered, &path, dark);
+                println!("{}  warnings={:?}", path.display(), rendered.warnings);
+            }
+        }
+    }
+    println!("previews in {}", out.display());
+}
+
+/// Manual microbenchmark for the raster half of an animation frame.
+/// Run with:
+///   cargo test render_frame_benchmark -- --ignored --nocapture
+/// It deliberately excludes positioning / `UpdateLayeredWindow` (those need a
+/// real Win32 window); the numbers show whether the GDI raster alone fits in
+/// the 16 ms tick budget.
+#[test]
+#[ignore = "manual benchmark; prints frame times to stdout"]
+fn render_frame_benchmark() {
+    use crate::models::{AppUsageData, UsageData, UsageSection};
+    use std::time::Instant;
+
+    let raw = include_str!("../themes/compact-fluent-quad.json");
+    let theme: ThemeDocument = serde_json::from_str(raw).unwrap();
+    assert!(theme.validate().is_empty());
+    let section = |percentage: f64| UsageSection {
+        available: true,
+        percentage,
+        resets_at: None,
+    };
+    let data = AppUsageData::from_iter(ProviderId::ALL.into_iter().map(|provider| {
+        (
+            provider,
+            UsageData {
+                session: section(12.0),
+                weekly: section(45.0),
+                monthly: Some(section(60.0)),
+                ..Default::default()
+            },
+        )
+    }));
+    let runtime = ThemeRuntime::from_providers(ProviderSet::from_enabled([
+        ProviderId::Claude,
+        ProviderId::Codex,
+        ProviderId::Antigravity,
+        ProviderId::OpenCode,
+    ]))
+    .with_claude_state(true, true, true, 0.5)
+    .with_codex_state(true, true, true, 0.5)
+    .with_antigravity_pools(true, true, 0.5)
+    .with_opencode_state(0.5)
+    .with_show_pace(true);
+
+    for scale in [1.0_f64, 1.5] {
+        for _ in 0..5 {
+            let _ =
+                render_theme_surface_with_runtime_at_scale(&theme, 0, Some(&data), runtime, scale);
+        }
+        let mut times = Vec::with_capacity(100);
+        for _ in 0..100 {
+            let started = Instant::now();
+            let rendered =
+                render_theme_surface_with_runtime_at_scale(&theme, 0, Some(&data), runtime, scale);
+            times.push(started.elapsed().as_secs_f64() * 1000.0);
+            assert!(rendered.warnings.is_empty());
+        }
+        times.sort_by(|left, right| left.total_cmp(right));
+        let p50 = times[50];
+        let p95 = times[95];
+        let max = times[99];
+        println!(
+            "scale={scale:.1}  theme raster: p50={p50:.3} ms  p95={p95:.3} ms  \
+             max={max:.3} ms  (tick budget 16.0 ms)"
         );
     }
 }

@@ -1584,25 +1584,22 @@ fn expected_used(resets_at: std::time::SystemTime, length: std::time::Duration) 
 /// for hover transitions.
 ///
 /// Progress `p` runs from 0.0 (unhovered/normal state) to 1.0 (hovered state).
-/// - The outgoing normal state fades out rapidly between 0.0 and 0.35:
-///   `normal_opacity = (1.0 - p / 0.35).clamp(0.0, 1.0)`.
-/// - The incoming hover state fades in with a slight lead starting at 0.25:
-///   `hover_opacity = ((p - 0.25) / 0.75).clamp(0.0, 1.0)`.
+/// - The outgoing normal layer fades out over the first 45%:
+///   `normal_opacity = (1.0 - p / 0.45).clamp(0.0, 1.0)`.
+/// - The incoming hover layer starts at 10% and reaches full opacity at 65%:
+///   `hover_opacity = ((p - 0.10) / 0.55).clamp(0.0, 1.0)`.
 ///
-/// This eliminates double-exposure ghosting / overlapping images while avoiding
-/// a jarring empty dip in brightness.
+/// The original ramp (0.35 out / 0.25 in) left the middle of the transition
+/// almost blank: combined opacity bottomed out near 0.21 and the incoming
+/// text was only at ~33% at `p=0.5`. Labels stay at fixed coordinates and
+/// substitute in place, so a wider overlap only blends the same text box and
+/// does not produce a positional ghost. Combined opacity now stays above
+/// ~0.63, and the two layers are still never both fully opaque (their sum
+/// never exceeds 1.0).
 pub fn asymmetric_crossfade_opacities(progress_to_hover: f64) -> (f64, f64) {
     let p = progress_to_hover.clamp(0.0, 1.0);
-    let normal_opacity = if p < 0.35 {
-        (1.0 - p / 0.35).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let hover_opacity = if p > 0.25 {
-        ((p - 0.25) / 0.75).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
+    let normal_opacity = (1.0 - p / 0.45).clamp(0.0, 1.0);
+    let hover_opacity = ((p - 0.10) / 0.55).clamp(0.0, 1.0);
     (normal_opacity, hover_opacity)
 }
 

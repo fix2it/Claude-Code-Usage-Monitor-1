@@ -223,7 +223,37 @@ fn tile_hover_at(
     lx >= rect.0 && lx < rect.0 + rect.2 && ly >= rect.1 && ly < rect.1 + rect.3
 }
 
+/// A duplicate `WM_MOUSEMOVE` at the same client point cannot change any
+/// hover state, but it used to re-run four hit-tests, a `TME_QUERY` and up to
+/// four `mouse_target_at` passes. Coalescing them keeps the message queue
+/// short so animation ticks arrive on time. `WM_MOUSELEAVE` clears the cache.
+static LAST_MOUSE_MOVE: OnceLock<Mutex<Option<(Instant, isize)>>> = OnceLock::new();
+
+pub(super) fn reset_mouse_move_throttle() {
+    let cache = LAST_MOUSE_MOVE.get_or_init(|| Mutex::new(None));
+    *cache
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+}
+
+/// `now` is injected by the caller so the coalescing window is unit-testable
+/// without depending on wall-clock timing.
+fn duplicate_mouse_move(lparam: LPARAM, now: Instant) -> bool {
+    let cache = LAST_MOUSE_MOVE.get_or_init(|| Mutex::new(None));
+    let mut last = cache
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let duplicate = last.as_ref().is_some_and(|(at, point)| {
+        *point == lparam.0 && now.duration_since(*at) < Duration::from_millis(8)
+    });
+    *last = Some((now, lparam.0));
+    duplicate
+}
+
 pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
+    if duplicate_mouse_move(lparam, Instant::now()) {
+        return;
+    }
     track_mouse_hover_with(hwnd, widget_tooltip::visible_for(hwnd), |tracking| unsafe {
         TrackMouseEvent(tracking)
     });
@@ -247,7 +277,10 @@ pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
     // and the provider wrappers have none, so the OpenCode tile is detected
     // with the same cached `object_bounds` rect as the other three providers.
     super::set_opencode_hover(hwnd, opencode_hovered);
-    super::tick_animations(hwnd, true);
+    // No tick here: the animation timer drives every frame. Ticking on mouse
+    // move used to produce a second full render right after `set_*_hover`
+    // already rendered the first frame, and its 15 ms throttle could swallow
+    // real timer ticks.
     for _ in 0..4 {
         let target = mouse_target_at(hwnd, lparam);
         let previous = {
@@ -309,6 +342,7 @@ fn track_mouse_hover_with(
 }
 
 pub(super) fn clear_mouse_hover(hwnd: HWND) {
+    reset_mouse_move_throttle();
     widget_tooltip::hide_for(hwnd);
     set_antigravity_hover(hwnd, false);
     super::set_claude_hover(hwnd, false);
@@ -436,6 +470,36 @@ unsafe fn surface_cursor_is_clickable(hwnd: HWND) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn duplicate_mouse_moves_are_coalesced_but_real_moves_are_not() {
+        reset_mouse_move_throttle();
+        let start = Instant::now();
+        let point = LPARAM(0x0001_0002);
+        assert!(
+            !duplicate_mouse_move(point, start),
+            "the first move at a point must be processed"
+        );
+        assert!(
+            duplicate_mouse_move(point, start + Duration::from_millis(1)),
+            "a duplicate at the same point within 8 ms must be skipped"
+        );
+        assert!(
+            !duplicate_mouse_move(point, start + Duration::from_millis(9)),
+            "the same point after the 8 ms window must be processed"
+        );
+        let elsewhere = LPARAM(0x0003_0004);
+        assert!(
+            !duplicate_mouse_move(elsewhere, start + Duration::from_millis(10)),
+            "a move to different coordinates must be processed"
+        );
+        // WM_MOUSELEAVE clears the throttle so re-entry at the same point works.
+        reset_mouse_move_throttle();
+        assert!(
+            !duplicate_mouse_move(point, start + Duration::from_millis(11)),
+            "re-entry after a leave must be processed"
+        );
+    }
 
     #[test]
     fn repeated_mouse_moves_preserve_the_pending_hover_deadline() {

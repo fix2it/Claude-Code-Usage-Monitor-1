@@ -131,10 +131,15 @@ pub(super) unsafe extern "system" fn wnd_proc(
                     lifecycle::reconcile_surfaces();
                 }
                 TIMER_CROSSFADE_SCHEDULE => {
+                    // Legacy fallback when the multimedia timer is unavailable.
                     tick_animations(hwnd, false);
                 }
                 _ => {}
             }
+            LRESULT(0)
+        }
+        native_interop::WM_APP_ANIMATION_TICK => {
+            tick_animations(hwnd, false);
             LRESULT(0)
         }
         native_interop::WM_APP_TRAY_REPOSITION => {

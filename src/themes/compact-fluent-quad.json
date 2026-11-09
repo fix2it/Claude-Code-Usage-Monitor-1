@@ -2031,7 +2031,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8 - 13 * antigravity.hover_phase",
+          "y": "8",
           "width": "62",
           "height": "13",
           "background": {
@@ -2064,7 +2064,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8 + 13 * (1 - antigravity.hover_phase)",
+          "y": "8",
           "width": "62",
           "height": "13",
           "background": {
@@ -2097,7 +2097,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8 - 13 * antigravity.hover_phase",
+          "y": "8",
           "width": "62",
           "height": "13",
           "background": {
@@ -2130,7 +2130,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "8 + 13 * (1 - antigravity.hover_phase)",
+          "y": "8",
           "width": "62",
           "height": "13",
           "background": {
@@ -2627,7 +2627,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25 - 13 * antigravity.hover_phase",
+          "y": "25",
           "width": "62",
           "height": "13",
           "background": {
@@ -2660,7 +2660,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25 + 13 * (1 - antigravity.hover_phase)",
+          "y": "25",
           "width": "62",
           "height": "13",
           "background": {
@@ -2693,7 +2693,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25 - 13 * antigravity.hover_phase",
+          "y": "25",
           "width": "62",
           "height": "13",
           "background": {
@@ -2726,7 +2726,7 @@
           "visibility": "100",
           "parent": "antigravity-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "25 + 13 * (1 - antigravity.hover_phase)",
+          "y": "25",
           "width": "62",
           "height": "13",
           "background": {
@@ -3714,7 +3714,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#D97757FF",
               "opacity": "claude.normal.opacity"
@@ -3747,7 +3747,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#C45A38FF",
               "opacity": "claude.hover.opacity"
@@ -3780,7 +3780,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#A94F32FF",
               "opacity": "claude.normal.opacity"
@@ -3813,7 +3813,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#7C2D12FF",
               "opacity": "claude.hover.opacity"
@@ -4323,7 +4323,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 - 13 * claude.hover_phase",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -4356,7 +4356,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 + 13 * (1 - claude.hover_phase)",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -4389,7 +4389,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 - 13 * claude.hover_phase",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -4422,7 +4422,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 + 13 * (1 - claude.hover_phase)",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -4474,7 +4474,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#D97757FF",
               "opacity": "claude.normal.opacity"
@@ -4507,7 +4507,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#C45A38FF",
               "opacity": "claude.hover.opacity"
@@ -4540,7 +4540,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#A94F32FF",
               "opacity": "claude.normal.opacity"
@@ -4573,7 +4573,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#7C2D12FF",
               "opacity": "claude.hover.opacity"
@@ -5083,7 +5083,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 - 13 * claude.hover_phase",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -5116,7 +5116,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 + 13 * (1 - claude.hover_phase)",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -5149,7 +5149,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 - 13 * claude.hover_phase",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -5182,7 +5182,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 + 13 * (1 - claude.hover_phase)",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -5370,7 +5370,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#60A5FAFF",
               "opacity": "codex.normal.opacity"
@@ -5403,7 +5403,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#3B82F6FF",
               "opacity": "codex.hover.opacity"
@@ -5436,7 +5436,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#2563EBFF",
               "opacity": "codex.normal.opacity"
@@ -5469,7 +5469,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#1D4ED8FF",
               "opacity": "codex.hover.opacity"
@@ -5979,7 +5979,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 - 13 * codex.hover_phase",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -6012,7 +6012,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 + 13 * (1 - codex.hover_phase)",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -6045,7 +6045,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 - 13 * codex.hover_phase",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -6078,7 +6078,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "7 + 13 * (1 - codex.hover_phase)",
+          "y": "7",
           "width": "62",
           "height": "13",
           "background": {
@@ -6130,7 +6130,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#60A5FAFF",
               "opacity": "codex.normal.opacity"
@@ -6163,7 +6163,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#3B82F6FF",
               "opacity": "codex.hover.opacity"
@@ -6196,7 +6196,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#2563EBFF",
               "opacity": "codex.normal.opacity"
@@ -6229,7 +6229,7 @@
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",
-            "align": "left",
+            "align": "center",
             "color": {
               "color": "#1D4ED8FF",
               "opacity": "codex.hover.opacity"
@@ -6739,7 +6739,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 - 13 * codex.hover_phase",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -6772,7 +6772,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 + 13 * (1 - codex.hover_phase)",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -6805,7 +6805,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 - 13 * codex.hover_phase",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {
@@ -6838,7 +6838,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
-          "y": "26 + 13 * (1 - codex.hover_phase)",
+          "y": "26",
           "width": "62",
           "height": "13",
           "background": {

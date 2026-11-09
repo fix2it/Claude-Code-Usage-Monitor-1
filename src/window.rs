@@ -189,9 +189,7 @@ impl AppState {
 
     pub(super) fn stop_crossfade_timer_if_idle(&self, hwnd: HWND) {
         if !self.is_any_animation_active() {
-            unsafe {
-                let _ = kill_controller_timer(Some(hwnd), TIMER_CROSSFADE_SCHEDULE);
-            }
+            animation_timer::stop(hwnd);
         }
     }
 
@@ -2837,11 +2835,37 @@ pub fn run() {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RenderTrigger {
+    /// Geometry, host, theme or DPI may have changed.
+    Full,
+    /// Only hover-phase pixels changed; canvas size and placement are fixed.
+    Animation,
+}
+
 /// Render every theme surface, then dispatch it to the presenter selected by
 /// its nest: DirectComposition for desktop and layered windows elsewhere.
 fn render_layered() {
+    render_layered_impl(RenderTrigger::Full);
+}
+
+/// A frame produced by an animation tick. Skips host enumeration, window
+/// reconciliation and the positioning cache invalidation that a full render
+/// performs; the positioning cache itself still misses on any geometry change.
+fn render_layered_animation() {
+    render_layered_impl(RenderTrigger::Animation);
+}
+
+fn render_layered_impl(trigger: RenderTrigger) {
+    if trigger == RenderTrigger::Full {
+        // Shell/DPI/theme changes must force one full positioning pass before
+        // subsequent animation frames are allowed to reuse the cached result.
+        positioning::invalidate_position_cache();
+    }
     refresh_dpi();
-    sync_surface_windows();
+    if trigger == RenderTrigger::Full {
+        sync_surface_windows();
+    }
     let (hwnd_val, active_theme, usage_data, runtime, mirror_hwnds, desktop_hwnds) = {
         let state = lock_state();
         let Some(state) = state.as_ref() else {
@@ -2861,7 +2885,9 @@ fn render_layered() {
     // install Classic in memory when a selected theme cannot be loaded.
     let theme = active_theme.unwrap_or_else(ThemeDocument::starter);
     let hwnd = hwnd_val.to_hwnd();
-    set_window_state_timer(hwnd, theme_has_floating_surface(&theme));
+    if trigger == RenderTrigger::Full {
+        set_window_state_timer(hwnd, theme_has_floating_surface(&theme));
+    }
     let target_count = theme.surfaces.len();
     for surface_index in 0..target_count {
         let regular_hwnd = if surface_index == 0 {
@@ -2952,6 +2978,12 @@ fn render_layered() {
             continue;
         }
 
+        // A hover frame skips `sync_surface_windows`, so never present into a
+        // surface that disappeared since the last full render.
+        if trigger == RenderTrigger::Animation && unsafe { !IsWindow(Some(target_hwnd)).as_bool() }
+        {
+            continue;
+        }
         let scale = theme_surface_scale(&theme, surface_index);
         let rendered = theme_engine::render_theme_surface_with_runtime_at_scale(
             &theme,
@@ -3657,14 +3689,7 @@ pub(super) fn stop_crossfade_timer_if_idle(hwnd: HWND) {
 }
 
 pub(super) fn ensure_crossfade_timer(hwnd: HWND) {
-    unsafe {
-        let _ = set_controller_timer(
-            Some(hwnd),
-            TIMER_CROSSFADE_SCHEDULE,
-            ANTIGRAVITY_CROSSFADE_TICK_MS,
-            None,
-        );
-    }
+    animation_timer::start(hwnd);
 }
 
 /// Advance every animation slot on the shared crossfade timer. One render
@@ -3704,7 +3729,7 @@ pub(super) fn tick_animations(hwnd: HWND, throttle: bool) {
         stop_crossfade_timer_if_idle(hwnd);
     }
     if should_render {
-        render_layered();
+        render_layered_animation();
     }
 }
 
@@ -3730,7 +3755,7 @@ pub(super) fn set_claude_hover(hwnd: HWND, hovered: bool) {
     }
     if should_animate {
         ensure_crossfade_timer(hwnd);
-        render_layered();
+        render_layered_animation();
     }
 }
 
@@ -3757,7 +3782,7 @@ pub(super) fn set_codex_hover(hwnd: HWND, hovered: bool) {
     }
     if should_animate {
         ensure_crossfade_timer(hwnd);
-        render_layered();
+        render_layered_animation();
     }
 }
 
@@ -3787,7 +3812,7 @@ pub(super) fn set_antigravity_hover(hwnd: HWND, hovered: bool) {
     }
     if should_animate {
         ensure_crossfade_timer(hwnd);
-        render_layered();
+        render_layered_animation();
     }
 }
 
@@ -3816,7 +3841,7 @@ pub(super) fn set_opencode_hover(hwnd: HWND, hovered: bool) {
     }
     if should_animate {
         ensure_crossfade_timer(hwnd);
-        render_layered();
+        render_layered_animation();
     }
 }
 
@@ -4011,6 +4036,7 @@ use message_loop::wnd_proc;
 mod positioning;
 mod taskbar_collision;
 use positioning::*;
+mod animation_timer;
 mod mouse;
 mod widget_tooltip;
 use mouse::*;

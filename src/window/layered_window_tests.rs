@@ -131,6 +131,56 @@ fn routine_rendering_keeps_the_layered_surface_alive() {
     }
 }
 
+/// A recreated surface can reuse an HWND whose geometry cache still holds the
+/// old window's values. The fresh window is still at its 1x1 creation rect,
+/// so `SetWindowPos` must NOT be short-circuited with SWP_NOMOVE/NOSIZE.
+#[test]
+fn recreated_surface_is_repositioned_despite_a_matching_geometry_cache() {
+    let window = TestWindow::new(WS_EX_LAYERED);
+    let hwnd = window.0;
+    let no_move = SWP_NOMOVE.0 | SWP_NOSIZE.0;
+
+    // First application on a fresh (1x1) window: no flags can be skipped.
+    let first = super::positioning::window_pos_flags(hwnd, 3, 4, 40, 2);
+    assert_eq!(first.0 & no_move, 0, "fresh window must be positioned");
+
+    // The cache now claims this geometry was applied, but the window is still
+    // 1x1 (e.g. Explorer destroyed it and a new one reused the HWND).
+    let stale = super::positioning::window_pos_flags(hwnd, 3, 4, 40, 2);
+    assert_eq!(
+        stale.0 & no_move,
+        0,
+        "stale cache must not skip positioning"
+    );
+
+    // Only once the window really has that size may the optimisation apply.
+    window.render(40);
+    let settled = super::positioning::window_pos_flags(hwnd, 3, 4, 40, 2);
+    assert_ne!(
+        settled.0 & no_move,
+        0,
+        "settled window should skip redundant move"
+    );
+}
+
+/// Removing a cache entry (explicit release, size change, or the `retain`
+/// purge after Explorer destroys a surface) drops its DC/DIB via
+/// `SurfaceBitmap::drop`; presenting again must still succeed.
+#[test]
+fn released_surface_bitmap_can_be_reacquired() {
+    let window = TestWindow::new(WS_EX_LAYERED);
+    window.render(4);
+    assert!(super::positioning::surface_bitmap_is_cached(window.0));
+    unsafe { super::positioning::release_surface_bitmap(window.0) };
+    assert!(!super::positioning::surface_bitmap_is_cached(window.0));
+    window.render(4);
+    assert!(super::positioning::surface_bitmap_is_cached(window.0));
+
+    // A size change also drops the old entry and creates a fresh DIB.
+    window.render(7);
+    assert!(super::positioning::surface_bitmap_is_cached(window.0));
+}
+
 #[test]
 fn docking_rebinds_layered_surface_only_when_parent_changes() {
     let first_parent = TestWindow::new(WINDOW_EX_STYLE::default());

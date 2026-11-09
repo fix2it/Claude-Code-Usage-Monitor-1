@@ -1,5 +1,273 @@
 use super::*;
 
+// ---------------------------------------------------------------------------
+// Per-frame caches for the hover-animation render loop.
+//
+// `render_layered` runs up to ~13 times per 200 ms transition. Before these
+// caches every frame re-enumerated all top-level windows (`EnumWindows`) and
+// monitors (`EnumDisplayMonitors`), re-parented/re-positioned the surface with
+// `SetWindowPos`, and allocated + destroyed a fresh DIB section. None of that
+// is needed while only `hover_phase` changes: the canvas size, placement and
+// host stay fixed.
+//
+// Every cache key contains exactly the values that determine its result, so a
+// DPI/theme/provider/nest/host change, a reparent, or a `mode_phase` width
+// change (stage 5) automatically misses the cache and takes the full path.
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+struct PositionKey {
+    hwnd: isize,
+    parent: isize,
+    scale_bits: u64,
+    width: u32,
+    height: u32,
+    offset_x: i32,
+    offset_y: i32,
+    display: usize,
+    region: u8,
+    nest: u8,
+    horizontal: u8,
+    vertical: u8,
+    surface_horizontal: Option<u8>,
+    surface_vertical: Option<u8>,
+    host_dimensions: Option<(u32, u32)>,
+    clamp_taskbar_drag: bool,
+}
+
+fn position_key(hwnd: HWND, theme: &ThemeDocument, scale: f64) -> PositionKey {
+    let p = &theme.placement;
+    PositionKey {
+        hwnd: hwnd.0 as isize,
+        parent: unsafe { GetParent(hwnd) }
+            .ok()
+            .map(|parent| parent.0 as isize)
+            .unwrap_or(0),
+        scale_bits: scale.to_bits(),
+        width: theme.canvas.width,
+        height: theme.canvas.height,
+        offset_x: p.offset_x,
+        offset_y: p.offset_y,
+        display: p.reference.display,
+        region: p.reference.region as u8,
+        nest: p.nest as u8,
+        horizontal: p.horizontal as u8,
+        vertical: p.vertical as u8,
+        surface_horizontal: p.surface_horizontal.map(|anchor| anchor as u8),
+        surface_vertical: p.surface_vertical.map(|anchor| anchor as u8),
+        host_dimensions: p.host_dimensions,
+        clamp_taskbar_drag: p.clamp_taskbar_drag,
+    }
+}
+
+static POSITION_CACHE: OnceLock<Mutex<HashMap<isize, PositionKey>>> = OnceLock::new();
+
+fn position_cache() -> &'static Mutex<HashMap<isize, PositionKey>> {
+    POSITION_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Called by full renders (poll, theme/DPI/settings/shell changes) so the next
+/// animation frame cannot skip repositioning after a host change.
+///
+/// `WINDOW_POS_CACHE` is deliberately NOT cleared here: a full render that
+/// re-applies unchanged geometry should still use `SWP_NOMOVE | SWP_NOSIZE`.
+/// Its key is the geometry itself, so any real size/position change misses it.
+pub(super) fn invalidate_position_cache() {
+    position_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clear();
+}
+
+/// `embed_as_child` can change the parent while positioning. Record the key
+/// with the parent that actually exists afterwards, or the cache would miss
+/// forever on the first frame after a reparent.
+fn key_with_current_parent(mut key: PositionKey) -> PositionKey {
+    key.parent = unsafe { GetParent(HWND(key.hwnd as *mut _)) }
+        .ok()
+        .map(|parent| parent.0 as isize)
+        .unwrap_or(0);
+    key
+}
+
+fn position_is_current(key: PositionKey) -> bool {
+    position_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&key.hwnd)
+        == Some(&key)
+}
+
+fn record_position(key: PositionKey) {
+    position_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(key.hwnd, key_with_current_parent(key));
+}
+
+/// The last geometry actually applied through `SetWindowPos`. Repeating the
+/// same geometry with `SWP_NOMOVE | SWP_NOSIZE` avoids an extra
+/// `WM_WINDOWPOSCHANGED` in the queue, which would otherwise delay the next
+/// animation tick.
+static WINDOW_POS_CACHE: OnceLock<Mutex<HashMap<isize, (i32, i32, i32, i32)>>> = OnceLock::new();
+
+/// `pub(super)` so the layered-window regression test can assert the flags
+/// directly for a freshly created (still 1x1) surface.
+pub(super) fn window_pos_flags(
+    hwnd: HWND,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+) -> SET_WINDOW_POS_FLAGS {
+    let mut flags = SWP_NOACTIVATE;
+    let cache = WINDOW_POS_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut cache = cache
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let key = hwnd.0 as isize;
+    let geometry = (x, y, width, height);
+    // Only skip the move when the window really is at the recorded size. A
+    // recreated surface may reuse the same HWND value while still sitting at
+    // its creation (e.g. 1x1) rect; a failed SetWindowPos likewise leaves the
+    // old size. In both cases the full positioning must run.
+    let current_size = native_interop::get_window_rect_safe(hwnd)
+        .map(|rect| (rect.right - rect.left, rect.bottom - rect.top));
+    let applied = cache.get(&key) == Some(&geometry);
+    let still_correct = current_size == Some((width, height));
+    if applied && still_correct {
+        flags |= SWP_NOMOVE | SWP_NOSIZE;
+    }
+    cache.insert(key, geometry);
+    flags
+}
+
+/// A raw pointer is only ever used from the UI thread that owns the DC, but
+/// `Mutex<HashMap<...>>` requires `Send`, so wrap it explicitly.
+#[derive(Clone, Copy)]
+struct SendPtr(*mut u32);
+unsafe impl Send for SendPtr {}
+
+struct SurfaceBitmap {
+    dc: isize,
+    bitmap: isize,
+    old: isize,
+    bits: SendPtr,
+    width: i32,
+    height: i32,
+}
+
+/// GDI objects are freed whenever an entry leaves the cache — including the
+/// `retain` purge for externally destroyed surfaces (Explorer restarts), not
+/// just the explicit `destroy_surface` path. Without this, every shell restart
+/// leaked a DC, a DIB and their pixel buffer.
+impl Drop for SurfaceBitmap {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = SelectObject(HDC(self.dc as *mut _), HGDIOBJ(self.old as *mut _));
+            let _ = DeleteObject(HGDIOBJ(self.bitmap as *mut _));
+            let _ = DeleteDC(HDC(self.dc as *mut _));
+        }
+    }
+}
+
+static SURFACE_BITMAPS: OnceLock<Mutex<HashMap<isize, SurfaceBitmap>>> = OnceLock::new();
+
+fn surface_bitmaps() -> &'static Mutex<HashMap<isize, SurfaceBitmap>> {
+    SURFACE_BITMAPS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Destroy and forget the cached GDI objects for `hwnd`. Called when a surface
+/// window is destroyed so a recycled HWND cannot inherit a dead DC. `Drop` on
+/// the removed entry performs the actual GDI cleanup. The positioning caches
+/// are cleared for the same HWND: a recreated surface must not inherit stale
+/// geometry from the window it replaced.
+pub(super) unsafe fn release_surface_bitmap(hwnd: HWND) {
+    let key = hwnd.0 as isize;
+    surface_bitmaps()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&key);
+    position_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&key);
+    WINDOW_POS_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&key);
+}
+
+/// Test-only probe: global caches are shared across parallel tests, so assert
+/// on a specific HWND rather than on the total entry count.
+#[cfg(test)]
+pub(super) fn surface_bitmap_is_cached(hwnd: HWND) -> bool {
+    surface_bitmaps()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .contains_key(&(hwnd.0 as isize))
+}
+
+/// Reuse the memory DC + DIB section for this surface. Returns the DC and the
+/// writable pixel buffer; the cache keeps ownership of both GDI objects.
+unsafe fn acquire_surface_bitmap(
+    hwnd: HWND,
+    screen_dc: HDC,
+    width: i32,
+    height: i32,
+) -> Option<(HDC, *mut u32)> {
+    let mut cache = surface_bitmaps()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    // Drop entries whose window no longer exists (surface recreation).
+    cache.retain(|key, _| IsWindow(Some(HWND(*key as *mut _))).as_bool());
+    let key = hwnd.0 as isize;
+
+    if let Some(entry) = cache.get(&key) {
+        if entry.width == width && entry.height == height {
+            return Some((HDC(entry.dc as *mut _), entry.bits.0));
+        }
+        // Removing the stale entry runs `SurfaceBitmap::drop`, which restores
+        // the old bitmap and frees the DC, DIB and pixel buffer.
+        cache.remove(&key);
+    }
+
+    let memory_dc = CreateCompatibleDC(Some(screen_dc));
+    let info = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: width,
+            biHeight: -height,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut bits: *mut core::ffi::c_void = std::ptr::null_mut();
+    let bitmap = CreateDIBSection(Some(memory_dc), &info, DIB_RGB_COLORS, &mut bits, None, 0)
+        .unwrap_or_default();
+    if bitmap.is_invalid() || bits.is_null() {
+        let _ = DeleteDC(memory_dc);
+        return None;
+    }
+    let old = SelectObject(memory_dc, bitmap.into());
+    cache.insert(
+        key,
+        SurfaceBitmap {
+            dc: memory_dc.0 as isize,
+            bitmap: bitmap.0 as isize,
+            old: old.0 as isize,
+            bits: SendPtr(bits as *mut u32),
+            width,
+            height,
+        },
+    );
+    Some((memory_dc, bits as *mut u32))
+}
+
 pub(super) fn position_at_taskbar() {
     let should_skip = {
         let state = lock_state();
@@ -178,29 +446,13 @@ pub(super) fn render_custom_window(
         // window DC happened to work for taskbar-hosted children, but desktop
         // WorkerW/DefView composition can discard the resulting surface.
         let screen_dc = GetDC(None);
-        let memory_dc = CreateCompatibleDC(Some(screen_dc));
-        let info = BITMAPINFO {
-            bmiHeader: BITMAPINFOHEADER {
-                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-                biWidth: width,
-                biHeight: -height,
-                biPlanes: 1,
-                biBitCount: 32,
-                biCompression: BI_RGB.0,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let mut bits = std::ptr::null_mut();
-        let bitmap = CreateDIBSection(Some(memory_dc), &info, DIB_RGB_COLORS, &mut bits, None, 0)
-            .unwrap_or_default();
-        if bitmap.is_invalid() || bits.is_null() {
-            let _ = DeleteDC(memory_dc);
+        // The memory DC and DIB section are cached per surface: only the pixel
+        // copy and UpdateLayeredWindow repeat on every animation frame.
+        let Some((memory_dc, bits)) = acquire_surface_bitmap(hwnd, screen_dc, width, height) else {
             ReleaseDC(None, screen_dc);
             return;
-        }
-        let old = SelectObject(memory_dc, bitmap.into());
-        let window_pixels = std::slice::from_raw_parts_mut(bits as *mut u32, rendered.pixels.len());
+        };
+        let window_pixels = std::slice::from_raw_parts_mut(bits, rendered.pixels.len());
         for (target, source) in window_pixels.iter_mut().zip(&rendered.pixels) {
             // Windows normally lets mouse input pass through zero-alpha pixels in
             // layered windows. A nearly transparent pixel keeps the full surface
@@ -238,9 +490,9 @@ pub(super) fn render_custom_window(
                 hwnd, width, height
             ));
         }
-        SelectObject(memory_dc, old);
-        let _ = DeleteObject(bitmap.into());
-        let _ = DeleteDC(memory_dc);
+        // The DC and bitmap stay selected in the cache until the surface is
+        // destroyed or its size changes; deleting them here forced a fresh
+        // allocation on every frame.
         ReleaseDC(None, screen_dc);
     }
 }
@@ -259,6 +511,14 @@ pub(super) fn position_custom_theme_internal(
         state.as_ref().is_some_and(|s| s.dragging)
     };
     if is_dragging {
+        return true;
+    }
+    // On animation frames the canvas size, placement and host are unchanged;
+    // skip the whole EnumWindows/EnumDisplayMonitors/SetWindowPos path. Any
+    // geometry change produces a different key (including stage-5 `mode_phase`
+    // width changes), and full renders clear the cache explicitly.
+    let key = position_key(hwnd, theme, scale);
+    if position_is_current(key) {
         return true;
     }
     let taskbars = native_interop::find_taskbars();
@@ -327,7 +587,7 @@ pub(super) fn position_custom_theme_internal(
                     point[0].y,
                     width,
                     height,
-                    SWP_NOACTIVATE,
+                    window_pos_flags(hwnd, point[0].x, point[0].y, width, height),
                 );
             }
             SurfaceNest::Desktop => {
@@ -344,7 +604,7 @@ pub(super) fn position_custom_theme_internal(
                         point[0].y,
                         width,
                         height,
-                        SWP_NOACTIVATE,
+                        window_pos_flags(hwnd, point[0].x, point[0].y, width, height),
                     );
                 } else {
                     let _ = ShowWindow(hwnd, SW_HIDE);
@@ -364,11 +624,12 @@ pub(super) fn position_custom_theme_internal(
                     y,
                     width,
                     height,
-                    SWP_NOACTIVATE,
+                    window_pos_flags(hwnd, x, y, width, height),
                 );
             }
         }
     }
+    record_position(key);
     true
 }
 
@@ -1172,5 +1433,95 @@ mod resolve_saved_monitor_tests {
         let displays = names(&[r"\\.\DISPLAY1", r"\\.\DISPLAY2"]);
         assert_eq!(resolve_saved_monitor_in(&displays, 1, None), Some(1));
         assert_eq!(resolve_saved_monitor_in(&displays, 5, None), None);
+    }
+}
+
+#[cfg(test)]
+mod position_key_tests {
+    use super::*;
+
+    /// Every value that can change the resolved window geometry must appear in
+    /// the key. Stage 5 changes surface width through `mode_phase`; if that
+    /// field were ever dropped from the key, the widget would freeze at stale
+    /// geometry during a view-mode transition.
+    #[test]
+    fn every_geometry_input_changes_the_position_key() {
+        use crate::theme_engine::{HorizontalAnchor, ReferenceRegion, SurfaceNest, VerticalAnchor};
+
+        let hwnd = HWND(std::ptr::null_mut());
+        let theme = ThemeDocument::starter();
+        let original = position_key(hwnd, &theme, 1.0);
+        let check = |name: &str, changed: ThemeDocument| {
+            assert_ne!(position_key(hwnd, &changed, 1.0), original, "{name}");
+        };
+
+        let mut t = theme.clone();
+        t.canvas.width += 1;
+        check("canvas.width", t);
+        let mut t = theme.clone();
+        t.canvas.height += 1;
+        check("canvas.height", t);
+        assert_ne!(position_key(hwnd, &theme, 1.5), original, "scale");
+        let mut t = theme.clone();
+        t.placement.offset_x += 1;
+        check("offset_x", t);
+        let mut t = theme.clone();
+        t.placement.offset_y += 1;
+        check("offset_y", t);
+        let mut t = theme.clone();
+        t.placement.reference.display += 1;
+        check("reference.display", t);
+
+        // Enum fields: choose a value guaranteed to differ from the starter's.
+        let mut t = theme.clone();
+        t.placement.reference.region = if t.placement.reference.region == ReferenceRegion::Monitor {
+            ReferenceRegion::Taskbar
+        } else {
+            ReferenceRegion::Monitor
+        };
+        check("reference.region", t);
+        let mut t = theme.clone();
+        t.placement.nest = if t.placement.nest == SurfaceNest::Floating {
+            SurfaceNest::Taskbar
+        } else {
+            SurfaceNest::Floating
+        };
+        check("nest", t);
+        let mut t = theme.clone();
+        t.placement.horizontal = if t.placement.horizontal == HorizontalAnchor::Left {
+            HorizontalAnchor::Center
+        } else {
+            HorizontalAnchor::Left
+        };
+        check("horizontal", t);
+        let mut t = theme.clone();
+        t.placement.vertical = if t.placement.vertical == VerticalAnchor::Top {
+            VerticalAnchor::Center
+        } else {
+            VerticalAnchor::Top
+        };
+        check("vertical", t);
+        let mut t = theme.clone();
+        t.placement.surface_horizontal =
+            if t.placement.surface_horizontal == Some(HorizontalAnchor::Center) {
+                Some(HorizontalAnchor::Left)
+            } else {
+                Some(HorizontalAnchor::Center)
+            };
+        check("surface_horizontal", t);
+        let mut t = theme.clone();
+        t.placement.surface_vertical =
+            if t.placement.surface_vertical == Some(VerticalAnchor::Center) {
+                Some(VerticalAnchor::Top)
+            } else {
+                Some(VerticalAnchor::Center)
+            };
+        check("surface_vertical", t);
+        let mut t = theme.clone();
+        t.placement.host_dimensions = Some((100, 50));
+        check("host_dimensions", t);
+        let mut t = theme.clone();
+        t.placement.clamp_taskbar_drag = !t.placement.clamp_taskbar_drag;
+        check("clamp_taskbar_drag", t);
     }
 }
