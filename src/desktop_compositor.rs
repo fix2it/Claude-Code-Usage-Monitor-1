@@ -17,7 +17,8 @@ use windows::Win32::Graphics::Dxgi::Common::{
 };
 use windows::Win32::Graphics::Dxgi::{
     IDXGIDevice, IDXGIFactory2, IDXGISwapChain1, DXGI_PRESENT, DXGI_SCALING_STRETCH,
-    DXGI_SWAP_CHAIN_DESC1, DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL, DXGI_USAGE_RENDER_TARGET_OUTPUT,
+    DXGI_SWAP_CHAIN_DESC1, DXGI_SWAP_CHAIN_FLAG, DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
+    DXGI_USAGE_RENDER_TARGET_OUTPUT,
 };
 
 use crate::theme_engine::RenderedTheme;
@@ -99,6 +100,23 @@ impl DesktopPresenter {
         })
     }
 
+    /// A mode transition animates the surface width on every 16 ms tick.
+    /// Recreating the swap chain for each frame stalls D3D and flickers, so
+    /// resize the existing one in place instead. The visual keeps the same
+    /// swap-chain object; `present()` reacquires buffer 0 after every resize.
+    unsafe fn resize(&mut self, width: u32, height: u32) -> windows::core::Result<()> {
+        self.swap_chain.ResizeBuffers(
+            2,
+            width,
+            height,
+            DXGI_FORMAT_B8G8R8A8_UNORM,
+            DXGI_SWAP_CHAIN_FLAG(0),
+        )?;
+        self.width = width;
+        self.height = height;
+        Ok(())
+    }
+
     unsafe fn present(&self, rendered: &RenderedTheme) -> windows::core::Result<()> {
         let back_buffer: ID3D11Texture2D = self.swap_chain.GetBuffer(0)?;
         self.context.UpdateSubresource(
@@ -114,6 +132,26 @@ impl DesktopPresenter {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PresenterAction {
+    Create,
+    Resize,
+    Keep,
+}
+
+/// Pure decision for one frame. A width change during a 200 ms mode
+/// transition must resize, never recreate: recreating the presenter on every
+/// tick was the desktop-nest flicker this stage removes. Keeping it pure makes
+/// the "zero recreations during a transition" invariant unit-testable without
+/// a D3D device.
+fn presenter_action(current: Option<(u32, u32)>, next: (u32, u32)) -> PresenterAction {
+    match current {
+        None => PresenterAction::Create,
+        Some(size) if size == next => PresenterAction::Keep,
+        Some(_) => PresenterAction::Resize,
+    }
+}
+
 pub fn present(hwnd: HWND, rendered: &RenderedTheme) -> Result<(), String> {
     if rendered.width == 0 || rendered.height == 0 {
         return Err("desktop surface has no pixels".into());
@@ -121,17 +159,27 @@ pub fn present(hwnd: HWND, rendered: &RenderedTheme) -> Result<(), String> {
     PRESENTERS.with(|presenters| {
         let mut presenters = presenters.borrow_mut();
         let key = hwnd.0 as isize;
-        let size_changed = presenters.get(&key).is_some_and(|presenter| {
-            presenter.width != rendered.width || presenter.height != rendered.height
-        });
-        if size_changed {
-            presenters.remove(&key);
-        }
-        if let std::collections::hash_map::Entry::Vacant(entry) = presenters.entry(key) {
-            let presenter =
-                unsafe { DesktopPresenter::create(hwnd, rendered.width, rendered.height) }
-                    .map_err(|error| format!("DirectComposition setup failed: {error}"))?;
-            entry.insert(presenter);
+        let next = (rendered.width, rendered.height);
+        match presenter_action(
+            presenters
+                .get(&key)
+                .map(|presenter| (presenter.width, presenter.height)),
+            next,
+        ) {
+            PresenterAction::Resize => {
+                let presenter = presenters
+                    .get_mut(&key)
+                    .expect("an existing presenter is required for a resize");
+                unsafe { presenter.resize(rendered.width, rendered.height) }
+                    .map_err(|error| format!("DirectComposition resize failed: {error}"))?;
+            }
+            PresenterAction::Create => {
+                let presenter =
+                    unsafe { DesktopPresenter::create(hwnd, rendered.width, rendered.height) }
+                        .map_err(|error| format!("DirectComposition setup failed: {error}"))?;
+                presenters.insert(key, presenter);
+            }
+            PresenterAction::Keep => {}
         }
         unsafe { presenters[&key].present(rendered) }
             .map_err(|error| format!("DirectComposition present failed: {error}"))
@@ -146,4 +194,46 @@ pub fn remove(hwnd: HWND) {
 
 pub fn clear() {
     PRESENTERS.with(|presenters| presenters.borrow_mut().clear());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_mode_transition_resizes_instead_of_recreating_the_presenter() {
+        assert_eq!(presenter_action(None, (200, 46)), PresenterAction::Create);
+        assert_eq!(
+            presenter_action(Some((200, 46)), (200, 46)),
+            PresenterAction::Keep
+        );
+
+        // ~12 width ticks across one 200 ms segment: not one may recreate.
+        let mut size = (200, 46);
+        for width in (80..=200).step_by(10) {
+            let action = presenter_action(Some(size), (width, 46));
+            assert_ne!(
+                action,
+                PresenterAction::Create,
+                "width {size:?} -> {width} recreated the presenter"
+            );
+            assert_eq!(
+                action,
+                if width == size.0 {
+                    PresenterAction::Keep
+                } else {
+                    PresenterAction::Resize
+                }
+            );
+            size = (width, 46);
+        }
+    }
+
+    #[test]
+    fn a_height_change_also_resizes_in_place() {
+        assert_eq!(
+            presenter_action(Some((200, 46)), (200, 60)),
+            PresenterAction::Resize
+        );
+    }
 }

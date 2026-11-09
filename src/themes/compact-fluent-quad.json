@@ -21,7 +21,7 @@
         "offset_x": 6,
         "offset_y": 0
       },
-      "width": "providers.count * (ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * 28 + providers.cursor.enabled * 18 + providers.claude.enabled * claude.model.fable.available * 96 + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12",
+      "width": "providers.count * (display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * (display.text_width_wide - display.text_width) + providers.cursor.enabled * 18 * (1 - display.mode_text_progress) + providers.claude.enabled * claude.model.fable.available * (6 + 90 * (1 - display.mode_text_progress) + (floor((90 + 1) / 11) * 11 - 1) * display.mode_text_progress * (1 - display.mode_bar_progress) + 30 * display.mode_bar_progress) + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12",
       "height": "46",
       "background": {
         "type": "none"
@@ -44,7 +44,7 @@
           "render": "providers.cursor.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 80",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + 80 * (1 - display.mode_text_progress) + 30 * display.mode_bar_progress",
           "height": "46",
           "background": {
             "type": "none"
@@ -65,7 +65,7 @@
           "visibility": "100",
           "parent": "cursor-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -97,9 +97,9 @@
           "id": "cursor-session-value-dark",
           "name": "dark Cursor Auto value",
           "render": "system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "cursor-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "80",
           "height": "13",
@@ -133,7 +133,7 @@
           "visibility": "100",
           "parent": "cursor-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -165,9 +165,9 @@
           "id": "cursor-session-value-light",
           "name": "light Cursor Auto value",
           "render": "1 - system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "cursor-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "80",
           "height": "13",
@@ -201,7 +201,7 @@
           "visibility": "100",
           "parent": "cursor-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -233,9 +233,9 @@
           "id": "cursor-weekly-value-dark",
           "name": "dark Cursor API value",
           "render": "system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "cursor-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "80",
           "height": "13",
@@ -269,7 +269,7 @@
           "visibility": "100",
           "parent": "cursor-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -301,9 +301,9 @@
           "id": "cursor-weekly-value-light",
           "name": "light Cursor API value",
           "render": "1 - system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "cursor-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "80",
           "height": "13",
@@ -356,7 +356,7 @@
           "render": "providers.claude.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62 + (claude.dual_mode * 12)",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress + (claude.dual_mode * 12)",
           "height": "46",
           "background": {
             "type": "none"
@@ -377,7 +377,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -409,9 +409,9 @@
           "id": "claude-session-segments-dark-pace",
           "name": "dark Claude Code 5-hour segments pace tick",
           "render": "(system.dark) && (!claude.dual_mode) && claude.session.available",
-          "visibility": "(100) * claude.session.expected_available * display.show_pace",
+          "visibility": "(100) * claude.session.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(claude.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(claude.session.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -435,9 +435,9 @@
           "id": "claude-session-value-dark",
           "name": "dark Claude Code 5-hour value",
           "render": "(system.dark) && (!claude.dual_mode) && claude.session.available",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -471,7 +471,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -503,9 +503,9 @@
           "id": "claude-session-segments-light-pace",
           "name": "light Claude Code 5-hour segments pace tick",
           "render": "(1 - system.dark) && (!claude.dual_mode) && claude.session.available",
-          "visibility": "(100) * claude.session.expected_available * display.show_pace",
+          "visibility": "(100) * claude.session.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(claude.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(claude.session.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -529,9 +529,9 @@
           "id": "claude-session-value-light",
           "name": "light Claude Code 5-hour value",
           "render": "(1 - system.dark) && (!claude.dual_mode) && claude.session.available",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -565,7 +565,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -597,9 +597,9 @@
           "id": "claude-weekly-segments-dark-pace",
           "name": "dark Claude Code 7-day segments pace tick",
           "render": "(system.dark) && (!claude.dual_mode)",
-          "visibility": "(100) * claude.weekly.expected_available * display.show_pace",
+          "visibility": "(100) * claude.weekly.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(claude.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(claude.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -623,9 +623,9 @@
           "id": "claude-weekly-value-dark",
           "name": "dark Claude Code 7-day value",
           "render": "((system.dark) && !claude.credits.available) && (!claude.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -659,7 +659,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -691,9 +691,9 @@
           "id": "claude-weekly-segments-light-pace",
           "name": "light Claude Code 7-day segments pace tick",
           "render": "(1 - system.dark) && (!claude.dual_mode)",
-          "visibility": "(100) * claude.weekly.expected_available * display.show_pace",
+          "visibility": "(100) * claude.weekly.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(claude.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(claude.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -717,9 +717,9 @@
           "id": "claude-weekly-value-light",
           "name": "light Claude Code 7-day value",
           "render": "((1 - system.dark) && !claude.credits.available) && (!claude.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -752,7 +752,7 @@
           "render": "providers.claude.enabled && claude.model.fable.available",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "90",
+          "width": "(90 * (1 - display.mode_text_progress) + (floor((90 + 1) / 11) * 11 - 1) * display.mode_text_progress * (1 - display.mode_bar_progress) + 30 * display.mode_bar_progress)",
           "height": "46",
           "background": {
             "type": "none"
@@ -773,7 +773,7 @@
           "visibility": "100",
           "parent": "fable-provider",
           "y": "10",
-          "width": "floor((90 + 1) / 11) * 11 - 1",
+          "width": "(floor((90 + 1) / 11) * 11 - 1) * (1 - display.mode_bar_progress)",
           "height": "9",
           "background": {
             "type": "none"
@@ -805,7 +805,7 @@
           "id": "fable-weekly-value-dark",
           "name": "dark Fable weekly value",
           "render": "system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "fable-provider",
           "y": "25",
           "width": "90",
@@ -840,7 +840,7 @@
           "visibility": "100",
           "parent": "fable-provider",
           "y": "10",
-          "width": "floor((90 + 1) / 11) * 11 - 1",
+          "width": "(floor((90 + 1) / 11) * 11 - 1) * (1 - display.mode_bar_progress)",
           "height": "9",
           "background": {
             "type": "none"
@@ -872,7 +872,7 @@
           "id": "fable-weekly-value-light",
           "name": "light Fable weekly value",
           "render": "1 - system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "fable-provider",
           "y": "25",
           "width": "90",
@@ -906,7 +906,7 @@
           "render": "providers.codex.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62 + (codex.dual_mode * 12)",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress + (codex.dual_mode * 12)",
           "height": "46",
           "background": {
             "type": "none"
@@ -927,7 +927,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -959,9 +959,9 @@
           "id": "codex-session-segments-dark-pace",
           "name": "dark Codex 5-hour segments pace tick",
           "render": "(system.dark) && (!codex.dual_mode)",
-          "visibility": "(100) * codex.five_hour.expected_available * display.show_pace",
+          "visibility": "(100) * codex.five_hour.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(codex.five_hour.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(codex.five_hour.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -985,9 +985,9 @@
           "id": "codex-session-value-dark",
           "name": "dark Codex 5-hour value",
           "render": "(system.dark) && (!codex.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -1021,7 +1021,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1053,9 +1053,9 @@
           "id": "codex-session-segments-light-pace",
           "name": "light Codex 5-hour segments pace tick",
           "render": "(1 - system.dark) && (!codex.dual_mode)",
-          "visibility": "(100) * codex.five_hour.expected_available * display.show_pace",
+          "visibility": "(100) * codex.five_hour.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(codex.five_hour.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(codex.five_hour.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1079,9 +1079,9 @@
           "id": "codex-session-value-light",
           "name": "light Codex 5-hour value",
           "render": "(1 - system.dark) && (!codex.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -1115,7 +1115,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1147,9 +1147,9 @@
           "id": "codex-weekly-segments-dark-pace",
           "name": "dark Codex 7-day segments pace tick",
           "render": "(system.dark) && (!codex.dual_mode)",
-          "visibility": "(100) * codex.weekly.expected_available * display.show_pace",
+          "visibility": "(100) * codex.weekly.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(codex.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(codex.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1173,9 +1173,9 @@
           "id": "codex-weekly-value-dark",
           "name": "dark Codex 7-day value",
           "render": "((system.dark) && !codex.credits.available) && (!codex.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -1209,7 +1209,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1241,9 +1241,9 @@
           "id": "codex-weekly-segments-light-pace",
           "name": "light Codex 7-day segments pace tick",
           "render": "(1 - system.dark) && (!codex.dual_mode)",
-          "visibility": "(100) * codex.weekly.expected_available * display.show_pace",
+          "visibility": "(100) * codex.weekly.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(codex.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(codex.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1267,9 +1267,9 @@
           "id": "codex-weekly-value-light",
           "name": "light Codex 7-day value",
           "render": "((1 - system.dark) && !codex.credits.available) && (!codex.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -1302,7 +1302,7 @@
           "render": "providers.antigravity.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress",
           "height": "46",
           "background": {
             "type": "none"
@@ -1323,7 +1323,7 @@
           "visibility": "100 * antigravity.gemini.opacity",
           "parent": "antigravity-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1355,9 +1355,9 @@
           "id": "antigravity-session-gemini-solo-dark-pace",
           "name": "dark Antigravity Gemini solo session segments pace tick",
           "render": "system.dark && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01",
-          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.gemini.opacity",
+          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.gemini.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1384,7 +1384,7 @@
           "visibility": "100 * antigravity.gemini.opacity",
           "parent": "antigravity-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1416,9 +1416,9 @@
           "id": "antigravity-session-gemini-solo-light-pace",
           "name": "light Antigravity Gemini solo session segments pace tick",
           "render": "(1 - system.dark) && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01",
-          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.gemini.opacity",
+          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.gemini.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1445,7 +1445,7 @@
           "visibility": "100 * antigravity.external.opacity",
           "parent": "antigravity-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1477,9 +1477,9 @@
           "id": "antigravity-session-external-solo-dark-pace",
           "name": "dark Antigravity External solo session segments pace tick",
           "render": "system.dark && !antigravity.dual_mode && antigravity.external.opacity > 0.01",
-          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.external.opacity",
+          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.external.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1506,7 +1506,7 @@
           "visibility": "100 * antigravity.external.opacity",
           "parent": "antigravity-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -1538,9 +1538,9 @@
           "id": "antigravity-session-external-solo-light-pace",
           "name": "light Antigravity External solo session segments pace tick",
           "render": "(1 - system.dark) && !antigravity.dual_mode && antigravity.external.opacity > 0.01",
-          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.external.opacity",
+          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.external.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "(10) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -1567,7 +1567,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1599,9 +1599,9 @@
           "id": "antigravity-gemini-5h-dark-normal-pace",
           "name": "dark Antigravity Gemini 5h normal pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -1625,7 +1625,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1657,9 +1657,9 @@
           "id": "antigravity-gemini-5h-dark-hover-pace",
           "name": "dark Antigravity Gemini 5h hover pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -1683,7 +1683,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1715,9 +1715,9 @@
           "id": "antigravity-gemini-5h-light-normal-pace",
           "name": "light Antigravity Gemini 5h normal pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -1741,7 +1741,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1773,9 +1773,9 @@
           "id": "antigravity-gemini-5h-light-hover-pace",
           "name": "light Antigravity Gemini 5h hover pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.gemini.session.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -1799,7 +1799,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "16 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1831,9 +1831,9 @@
           "id": "antigravity-gemini-weekly-dark-normal-pace",
           "name": "dark Antigravity Gemini weekly normal pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -1857,7 +1857,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "16 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1889,9 +1889,9 @@
           "id": "antigravity-gemini-weekly-dark-hover-pace",
           "name": "dark Antigravity Gemini weekly hover pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -1915,7 +1915,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "16 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -1947,9 +1947,9 @@
           "id": "antigravity-gemini-weekly-light-normal-pace",
           "name": "light Antigravity Gemini weekly normal pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -1973,7 +1973,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "16 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2005,9 +2005,9 @@
           "id": "antigravity-gemini-weekly-light-hover-pace",
           "name": "light Antigravity Gemini weekly hover pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -2028,9 +2028,9 @@
           "id": "antigravity-gemini-text-dark-normal",
           "name": "dark Antigravity Gemini text normal",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2061,9 +2061,9 @@
           "id": "antigravity-gemini-text-dark-hover",
           "name": "dark Antigravity Gemini text hover",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2094,9 +2094,9 @@
           "id": "antigravity-gemini-text-light-normal",
           "name": "light Antigravity Gemini text normal",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2127,9 +2127,9 @@
           "id": "antigravity-gemini-text-light-hover",
           "name": "light Antigravity Gemini text hover",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2163,7 +2163,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2195,9 +2195,9 @@
           "id": "antigravity-external-5h-dark-normal-pace",
           "name": "dark Antigravity External 5h normal pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -2221,7 +2221,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2253,9 +2253,9 @@
           "id": "antigravity-external-5h-dark-hover-pace",
           "name": "dark Antigravity External 5h hover pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -2279,7 +2279,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2311,9 +2311,9 @@
           "id": "antigravity-external-5h-light-normal-pace",
           "name": "light Antigravity External 5h normal pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -2337,7 +2337,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2369,9 +2369,9 @@
           "id": "antigravity-external-5h-light-hover-pace",
           "name": "light Antigravity External 5h hover pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.external.session.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * antigravity.hover_phase",
@@ -2395,7 +2395,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "35 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2427,9 +2427,9 @@
           "id": "antigravity-external-weekly-dark-normal-pace",
           "name": "dark Antigravity External weekly normal pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -2453,7 +2453,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "35 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2485,9 +2485,9 @@
           "id": "antigravity-external-weekly-dark-hover-pace",
           "name": "dark Antigravity External weekly hover pace",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -2511,7 +2511,7 @@
           "visibility": "100 * antigravity.normal.opacity",
           "parent": "antigravity-provider",
           "y": "35 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2543,9 +2543,9 @@
           "id": "antigravity-external-weekly-light-normal-pace",
           "name": "light Antigravity External weekly normal pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.normal.opacity",
+          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -2569,7 +2569,7 @@
           "visibility": "100 * antigravity.hover.opacity",
           "parent": "antigravity-provider",
           "y": "35 - 3 * antigravity.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * antigravity.hover_phase",
           "background": {
             "type": "none"
@@ -2601,9 +2601,9 @@
           "id": "antigravity-external-weekly-light-hover-pace",
           "name": "light Antigravity External weekly hover pace",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.hover.opacity",
+          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * antigravity.hover_phase",
           "width": "1",
           "height": "5 + 3 * antigravity.hover_phase",
@@ -2624,9 +2624,9 @@
           "id": "antigravity-external-text-dark-normal",
           "name": "dark Antigravity External text normal",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -2657,9 +2657,9 @@
           "id": "antigravity-external-text-dark-hover",
           "name": "dark Antigravity External text hover",
           "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -2690,9 +2690,9 @@
           "id": "antigravity-external-text-light-normal",
           "name": "light Antigravity External text normal",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -2723,9 +2723,9 @@
           "id": "antigravity-external-text-light-hover",
           "name": "light Antigravity External text hover",
           "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -2756,9 +2756,9 @@
           "id": "antigravity-session-gemini-value-dark",
           "name": "dark Antigravity Gemini session value",
           "render": "system.dark && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2789,9 +2789,9 @@
           "id": "antigravity-session-gemini-value-light",
           "name": "light Antigravity Gemini session value",
           "render": "(1 - system.dark && !antigravity.dual_mode) && antigravity.gemini.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2822,9 +2822,9 @@
           "id": "antigravity-session-external-value-dark",
           "name": "dark Antigravity External session value",
           "render": "system.dark && !antigravity.dual_mode && antigravity.external.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2855,9 +2855,9 @@
           "id": "antigravity-session-external-value-light",
           "name": "light Antigravity External session value",
           "render": "(1 - system.dark && !antigravity.dual_mode) && antigravity.external.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -2891,7 +2891,7 @@
           "visibility": "100 * antigravity.gemini.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -2923,9 +2923,9 @@
           "id": "antigravity-weekly-gemini-solo-dark-pace",
           "name": "dark Antigravity Gemini solo weekly segments pace tick",
           "render": "system.dark && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01",
-          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.gemini.opacity",
+          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.gemini.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -2952,7 +2952,7 @@
           "visibility": "100 * antigravity.gemini.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -2984,9 +2984,9 @@
           "id": "antigravity-weekly-gemini-solo-light-pace",
           "name": "light Antigravity Gemini solo weekly segments pace tick",
           "render": "(1 - system.dark) && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01",
-          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.gemini.opacity",
+          "visibility": "(100) * antigravity.gemini.weekly.expected_available * display.show_pace * antigravity.gemini.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.gemini.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -3013,7 +3013,7 @@
           "visibility": "100 * antigravity.external.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3045,9 +3045,9 @@
           "id": "antigravity-weekly-external-solo-dark-pace",
           "name": "dark Antigravity External solo weekly segments pace tick",
           "render": "system.dark && !antigravity.dual_mode && antigravity.external.opacity > 0.01",
-          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.external.opacity",
+          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.external.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -3074,7 +3074,7 @@
           "visibility": "100 * antigravity.external.opacity",
           "parent": "antigravity-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3106,9 +3106,9 @@
           "id": "antigravity-weekly-external-solo-light-pace",
           "name": "light Antigravity External solo weekly segments pace tick",
           "render": "(1 - system.dark) && !antigravity.dual_mode && antigravity.external.opacity > 0.01",
-          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.external.opacity",
+          "visibility": "(100) * antigravity.external.weekly.expected_available * display.show_pace * antigravity.external.opacity * (1 - display.mode_bar_progress)",
           "parent": "antigravity-provider",
-          "x": "round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
+          "x": "round((display.bar_width - 1) * clamp(antigravity.external.weekly.expected_display, 0, 100) / 100)",
           "y": "(27) - 1",
           "width": "1",
           "height": "(9) + 2",
@@ -3132,9 +3132,9 @@
           "id": "antigravity-weekly-gemini-value-dark",
           "name": "dark Antigravity Gemini weekly value",
           "render": "system.dark && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -3165,9 +3165,9 @@
           "id": "antigravity-weekly-gemini-value-light",
           "name": "light Antigravity Gemini weekly value",
           "render": "(1 - system.dark && !antigravity.dual_mode) && antigravity.gemini.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -3198,9 +3198,9 @@
           "id": "antigravity-weekly-external-value-dark",
           "name": "dark Antigravity External weekly value",
           "render": "system.dark && !antigravity.dual_mode && antigravity.external.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -3231,9 +3231,9 @@
           "id": "antigravity-weekly-external-value-light",
           "name": "light Antigravity External weekly value",
           "render": "(1 - system.dark && !antigravity.dual_mode) && antigravity.external.opacity > 0.01",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "antigravity-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -3266,7 +3266,7 @@
           "render": "providers.opencode.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 90",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width_wide + 30 * display.mode_bar_progress",
           "height": "46",
           "background": {
             "type": "none"
@@ -3287,7 +3287,7 @@
           "visibility": "100",
           "parent": "opencode-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3319,9 +3319,9 @@
           "id": "opencode-session-value-dark",
           "name": "dark OpenCode 5-hour value",
           "render": "system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "opencode-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -3355,7 +3355,7 @@
           "visibility": "100",
           "parent": "opencode-provider",
           "y": "10",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3387,9 +3387,9 @@
           "id": "opencode-session-value-light",
           "name": "light OpenCode 5-hour value",
           "render": "1 - system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "opencode-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "8",
           "width": "62",
           "height": "13",
@@ -3423,7 +3423,7 @@
           "visibility": "100",
           "parent": "opencode-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3455,9 +3455,9 @@
           "id": "opencode-weekly-value-dark",
           "name": "dark OpenCode long-window value",
           "render": "system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "opencode-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "90",
           "height": "13",
@@ -3491,7 +3491,7 @@
           "visibility": "100",
           "parent": "opencode-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3523,9 +3523,9 @@
           "id": "opencode-weekly-value-light",
           "name": "light OpenCode long-window value",
           "render": "1 - system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "opencode-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "90",
           "height": "13",
@@ -3559,7 +3559,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3591,9 +3591,9 @@
           "id": "claude-credits-value-dark",
           "name": "dark claude credit balance",
           "render": "((system.dark) && claude.credits.available) && (!claude.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -3627,7 +3627,7 @@
           "visibility": "100",
           "parent": "claude-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -3659,9 +3659,9 @@
           "id": "claude-credits-value-light",
           "name": "light claude credit balance",
           "render": "((1 - system.dark) && claude.credits.available) && (!claude.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -3828,7 +3828,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -3860,9 +3860,9 @@
           "id": "claude-main-5h-dark-normal-pace",
           "name": "dark Claude Main 5h normal pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -3890,7 +3890,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -3922,9 +3922,9 @@
           "id": "claude-main-5h-dark-hover-pace",
           "name": "dark Claude Main 5h hover pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -3952,7 +3952,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -3984,9 +3984,9 @@
           "id": "claude-main-5h-light-normal-pace",
           "name": "light Claude Main 5h normal pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -4014,7 +4014,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4046,9 +4046,9 @@
           "id": "claude-main-5h-light-hover-pace",
           "name": "light Claude Main 5h hover pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.default.session.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -4076,7 +4076,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "16 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4108,9 +4108,9 @@
           "id": "claude-main-7d-dark-normal-pace",
           "name": "dark Claude Main 7d normal pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -4138,7 +4138,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "16 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4170,9 +4170,9 @@
           "id": "claude-main-7d-dark-hover-pace",
           "name": "dark Claude Main 7d hover pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -4200,7 +4200,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "16 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4232,9 +4232,9 @@
           "id": "claude-main-7d-light-normal-pace",
           "name": "light Claude Main 7d normal pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -4262,7 +4262,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "16 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4294,9 +4294,9 @@
           "id": "claude-main-7d-light-hover-pace",
           "name": "light Claude Main 7d hover pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.default.weekly.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -4320,9 +4320,9 @@
           "id": "claude-main-text-dark-normal",
           "name": "dark Claude Main text 5h",
           "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -4353,9 +4353,9 @@
           "id": "claude-main-text-dark-hover",
           "name": "dark Claude Main text 7d",
           "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -4386,9 +4386,9 @@
           "id": "claude-main-text-light-normal",
           "name": "light Claude Main text 5h",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -4419,9 +4419,9 @@
           "id": "claude-main-text-light-hover",
           "name": "light Claude Main text 7d",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -4588,7 +4588,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4620,9 +4620,9 @@
           "id": "claude-x-5h-dark-normal-pace",
           "name": "dark Claude X 5h normal pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -4650,7 +4650,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4682,9 +4682,9 @@
           "id": "claude-x-5h-dark-hover-pace",
           "name": "dark Claude X 5h hover pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -4712,7 +4712,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4744,9 +4744,9 @@
           "id": "claude-x-5h-light-normal-pace",
           "name": "light Claude X 5h normal pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -4774,7 +4774,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4806,9 +4806,9 @@
           "id": "claude-x-5h-light-hover-pace",
           "name": "light Claude X 5h hover pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.session.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * claude.hover_phase",
@@ -4836,7 +4836,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "35 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4868,9 +4868,9 @@
           "id": "claude-x-7d-dark-normal-pace",
           "name": "dark Claude X 7d normal pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -4898,7 +4898,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "35 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4930,9 +4930,9 @@
           "id": "claude-x-7d-dark-hover-pace",
           "name": "dark Claude X 7d hover pace tick",
           "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -4960,7 +4960,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "35 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -4992,9 +4992,9 @@
           "id": "claude-x-7d-light-normal-pace",
           "name": "light Claude X 7d normal pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.normal.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -5022,7 +5022,7 @@
           "parent": "claude-provider",
           "x": "12",
           "y": "35 - 3 * claude.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * claude.hover_phase",
           "background": {
             "type": "none"
@@ -5054,9 +5054,9 @@
           "id": "claude-x-7d-light-hover-pace",
           "name": "light Claude X 7d hover pace tick",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.hover.opacity",
+          "visibility": "(100) * accounts.claude.claude_x.weekly.expected_available * display.show_pace * claude.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "claude-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.claude.claude_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * claude.hover_phase",
           "width": "1",
           "height": "5 + 3 * claude.hover_phase",
@@ -5080,9 +5080,9 @@
           "id": "claude-x-text-dark-normal",
           "name": "dark Claude X text 5h",
           "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -5113,9 +5113,9 @@
           "id": "claude-x-text-dark-hover",
           "name": "dark Claude X text 7d",
           "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -5146,9 +5146,9 @@
           "id": "claude-x-text-light-normal",
           "name": "light Claude X text 5h",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -5179,9 +5179,9 @@
           "id": "claude-x-text-light-hover",
           "name": "light Claude X text 7d",
           "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "claude-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -5215,7 +5215,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -5247,9 +5247,9 @@
           "id": "codex-credits-value-dark",
           "name": "dark codex credit balance",
           "render": "((system.dark) && codex.credits.available) && (!codex.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -5283,7 +5283,7 @@
           "visibility": "100",
           "parent": "codex-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -5315,9 +5315,9 @@
           "id": "codex-credits-value-light",
           "name": "light codex credit balance",
           "render": "((1 - system.dark) && codex.credits.available) && (!codex.dual_mode)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -5484,7 +5484,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5516,9 +5516,9 @@
           "id": "codex-main-5h-dark-normal-pace",
           "name": "dark Codex Main 5h normal pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -5546,7 +5546,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5578,9 +5578,9 @@
           "id": "codex-main-5h-dark-hover-pace",
           "name": "dark Codex Main 5h hover pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -5608,7 +5608,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5640,9 +5640,9 @@
           "id": "codex-main-5h-light-normal-pace",
           "name": "light Codex Main 5h normal pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -5670,7 +5670,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "8",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5702,9 +5702,9 @@
           "id": "codex-main-5h-light-hover-pace",
           "name": "light Codex Main 5h hover pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.default.session.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.session.expected_display, 0, 100) / 100)",
           "y": "7",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -5732,7 +5732,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "16 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5764,9 +5764,9 @@
           "id": "codex-main-7d-dark-normal-pace",
           "name": "dark Codex Main 7d normal pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -5794,7 +5794,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "16 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5826,9 +5826,9 @@
           "id": "codex-main-7d-dark-hover-pace",
           "name": "dark Codex Main 7d hover pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -5856,7 +5856,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "16 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5888,9 +5888,9 @@
           "id": "codex-main-7d-light-normal-pace",
           "name": "light Codex Main 7d normal pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -5918,7 +5918,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "16 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -5950,9 +5950,9 @@
           "id": "codex-main-7d-light-hover-pace",
           "name": "light Codex Main 7d hover pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.default.weekly.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.default.weekly.expected_display, 0, 100) / 100)",
           "y": "15 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -5976,9 +5976,9 @@
           "id": "codex-main-text-dark-normal",
           "name": "dark Codex Main text 5h",
           "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -6009,9 +6009,9 @@
           "id": "codex-main-text-dark-hover",
           "name": "dark Codex Main text 7d",
           "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -6042,9 +6042,9 @@
           "id": "codex-main-text-light-normal",
           "name": "light Codex Main text 5h",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -6075,9 +6075,9 @@
           "id": "codex-main-text-light-hover",
           "name": "light Codex Main text 7d",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "7",
           "width": "62",
           "height": "13",
@@ -6244,7 +6244,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6276,9 +6276,9 @@
           "id": "codex-x-5h-dark-normal-pace",
           "name": "dark Codex X 5h normal pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -6306,7 +6306,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6338,9 +6338,9 @@
           "id": "codex-x-5h-dark-hover-pace",
           "name": "dark Codex X 5h hover pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -6368,7 +6368,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6400,9 +6400,9 @@
           "id": "codex-x-5h-light-normal-pace",
           "name": "light Codex X 5h normal pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -6430,7 +6430,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "6 - 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6462,9 +6462,9 @@
           "id": "codex-x-5h-light-hover-pace",
           "name": "light Codex X 5h hover pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.session.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.session.expected_display, 0, 100) / 100)",
           "y": "26",
           "width": "1",
           "height": "8 - 3 * codex.hover_phase",
@@ -6492,7 +6492,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "35 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6524,9 +6524,9 @@
           "id": "codex-x-7d-dark-normal-pace",
           "name": "dark Codex X 7d normal pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -6554,7 +6554,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "35 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6586,9 +6586,9 @@
           "id": "codex-x-7d-dark-hover-pace",
           "name": "dark Codex X 7d hover pace tick",
           "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -6616,7 +6616,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "35 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6648,9 +6648,9 @@
           "id": "codex-x-7d-light-normal-pace",
           "name": "light Codex X 7d normal pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.normal.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.normal.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -6678,7 +6678,7 @@
           "parent": "codex-provider",
           "x": "12",
           "y": "35 - 3 * codex.hover_phase",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "3 + 3 * codex.hover_phase",
           "background": {
             "type": "none"
@@ -6710,9 +6710,9 @@
           "id": "codex-x-7d-light-hover-pace",
           "name": "light Codex X 7d hover pace tick",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.hover.opacity",
+          "visibility": "(100) * accounts.codex.codex_x.weekly.expected_available * display.show_pace * codex.hover.opacity * (1 - display.mode_bar_progress)",
           "parent": "codex-provider",
-          "x": "12 + round((ceil(10 / max(1, providers.count)) * 11 - 2) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
+          "x": "12 + round((display.bar_width - 1) * clamp(accounts.codex.codex_x.weekly.expected_display, 0, 100) / 100)",
           "y": "34 - 3 * codex.hover_phase",
           "width": "1",
           "height": "5 + 3 * codex.hover_phase",
@@ -6736,9 +6736,9 @@
           "id": "codex-x-text-dark-normal",
           "name": "dark Codex X text 5h",
           "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -6769,9 +6769,9 @@
           "id": "codex-x-text-dark-hover",
           "name": "dark Codex X text 7d",
           "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -6802,9 +6802,9 @@
           "id": "codex-x-text-light-normal",
           "name": "light Codex X text 5h",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -6835,9 +6835,9 @@
           "id": "codex-x-text-light-hover",
           "name": "light Codex X text 7d",
           "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01)",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "codex-provider",
-          "x": "12 + ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "12 + display.bar_width + 4 + display.text_slide_x",
           "y": "26",
           "width": "62",
           "height": "13",
@@ -6869,7 +6869,7 @@
           "name": "Grok provider",
           "render": "providers.grok.enabled",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress",
           "height": "46"
         },
         {
@@ -6879,7 +6879,7 @@
           "visibility": "100",
           "parent": "grok-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -6911,9 +6911,9 @@
           "id": "grok-pool-value-dark",
           "name": "dark Grok pool value",
           "render": "(system.dark) && !grok.credits.available",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "grok-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -6947,7 +6947,7 @@
           "visibility": "100",
           "parent": "grok-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -6979,9 +6979,9 @@
           "id": "grok-pool-value-light",
           "name": "light Grok pool value",
           "render": "(1 - system.dark) && !grok.credits.available",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "grok-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -7015,7 +7015,7 @@
           "visibility": "100",
           "parent": "grok-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -7047,9 +7047,9 @@
           "id": "grok-credits-value-dark",
           "name": "dark Grok on-demand value",
           "render": "(system.dark) && grok.credits.available",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "grok-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -7083,7 +7083,7 @@
           "visibility": "100",
           "parent": "grok-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -7115,9 +7115,9 @@
           "id": "grok-credits-value-light",
           "name": "light Grok on-demand value",
           "render": "(1 - system.dark) && grok.credits.available",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "grok-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -7149,7 +7149,7 @@
           "name": "Copilot provider",
           "render": "providers.copilot.enabled",
           "parent": "provider-row",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62",
+          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress",
           "height": "46"
         },
         {
@@ -7159,7 +7159,7 @@
           "visibility": "100",
           "parent": "copilot-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -7191,9 +7191,9 @@
           "id": "copilot-pool-value-dark",
           "name": "dark Copilot pool value",
           "render": "system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "copilot-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -7227,7 +7227,7 @@
           "visibility": "100",
           "parent": "copilot-provider",
           "y": "27",
-          "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
+          "width": "display.bar_width",
           "height": "9",
           "background": {
             "type": "none"
@@ -7259,9 +7259,9 @@
           "id": "copilot-pool-value-light",
           "name": "light Copilot pool value",
           "render": "1 - system.dark",
-          "visibility": "100",
+          "visibility": "display.text_opacity",
           "parent": "copilot-provider",
-          "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
+          "x": "display.bar_width + 4 + display.text_slide_x",
           "y": "25",
           "width": "62",
           "height": "13",
@@ -7278,6 +7278,1986 @@
             "template": "{copilot.weekly.display:usage_line}",
             "font_family": "Segoe UI",
             "font_size": "12",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#BE185DFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "cursor-session-value-dark-pct",
+          "name": "dark Cursor Auto value compact percent",
+          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "cursor-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{cursor.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F1F5F9FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "cursor-session-value-light-pct",
+          "name": "light Cursor Auto value compact percent",
+          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "cursor-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{cursor.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1A1A1AFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "cursor-weekly-value-dark-pct",
+          "name": "dark Cursor API value compact percent",
+          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "cursor-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{cursor.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F1F5F9FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "cursor-weekly-value-light-pct",
+          "name": "light Cursor API value compact percent",
+          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "cursor-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{cursor.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1A1A1AFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-session-value-dark-pct",
+          "name": "dark Claude Code 5-hour value compact percent",
+          "render": "((system.dark) && (!claude.dual_mode) && claude.session.available) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "claude-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F09A7AFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-session-value-light-pct",
+          "name": "light Claude Code 5-hour value compact percent",
+          "render": "((1 - system.dark) && (!claude.dual_mode) && claude.session.available) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "claude-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#A94F32FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-weekly-value-dark-pct",
+          "name": "dark Claude Code 7-day value compact percent",
+          "render": "((system.dark) && !claude.credits.available) && (!claude.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "claude-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F09A7AFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-weekly-value-light-pct",
+          "name": "light Claude Code 7-day value compact percent",
+          "render": "((1 - system.dark) && !claude.credits.available) && (!claude.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "claude-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#A94F32FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "fable-weekly-value-dark-pct",
+          "name": "dark Fable weekly value compact percent",
+          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "fable-provider",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.model.fable.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#B5A8E0FF",
+              "opacity": "1"
+            }
+          },
+          "x": "0"
+        },
+        {
+          "id": "fable-weekly-value-light-pct",
+          "name": "light Fable weekly value compact percent",
+          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "fable-provider",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.model.fable.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#5B4B8AFF",
+              "opacity": "1"
+            }
+          },
+          "x": "0"
+        },
+        {
+          "id": "codex-session-value-dark-pct",
+          "name": "dark Codex 5-hour value compact percent",
+          "render": "(system.dark) && (!codex.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "codex-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{codex.five_hour.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#93C5FDFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "codex-session-value-light-pct",
+          "name": "light Codex 5-hour value compact percent",
+          "render": "(1 - system.dark) && (!codex.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "codex-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{codex.five_hour.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1D4ED8FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "codex-weekly-value-dark-pct",
+          "name": "dark Codex 7-day value compact percent",
+          "render": "((system.dark) && !codex.credits.available) && (!codex.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "codex-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{codex.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#93C5FDFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "codex-weekly-value-light-pct",
+          "name": "light Codex 7-day value compact percent",
+          "render": "((1 - system.dark) && !codex.credits.available) && (!codex.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "codex-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{codex.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1D4ED8FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "antigravity-gemini-text-dark-normal-pct",
+          "name": "dark Antigravity Gemini text normal compact percent",
+          "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.normal.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#5EEAD4FF",
+              "opacity": "antigravity.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-gemini-text-dark-hover-pct",
+          "name": "dark Antigravity Gemini text hover compact percent",
+          "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.hover.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#0D9488FF",
+              "opacity": "antigravity.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-gemini-text-light-normal-pct",
+          "name": "light Antigravity Gemini text normal compact percent",
+          "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.normal.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#007A6CFF",
+              "opacity": "antigravity.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-gemini-text-light-hover-pct",
+          "name": "light Antigravity Gemini text hover compact percent",
+          "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.hover.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#004D40FF",
+              "opacity": "antigravity.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-external-text-dark-normal-pct",
+          "name": "dark Antigravity External text normal compact percent",
+          "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.normal.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#98D0E0FF",
+              "opacity": "antigravity.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-external-text-dark-hover-pct",
+          "name": "dark Antigravity External text hover compact percent",
+          "render": "(system.dark) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.hover.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#4A8B9EFF",
+              "opacity": "antigravity.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-external-text-light-normal-pct",
+          "name": "light Antigravity External text normal compact percent",
+          "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.normal.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#2D6F82FF",
+              "opacity": "antigravity.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-external-text-light-hover-pct",
+          "name": "light Antigravity External text hover compact percent",
+          "render": "((1 - system.dark)) && (antigravity.dual_mode) && (antigravity.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * antigravity.hover.opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1F4E5BFF",
+              "opacity": "antigravity.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-session-gemini-value-dark-pct",
+          "name": "dark Antigravity Gemini session value compact percent",
+          "render": "(system.dark && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#5EEAD4FF",
+              "opacity": "antigravity.gemini.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-session-gemini-value-light-pct",
+          "name": "light Antigravity Gemini session value compact percent",
+          "render": "((1 - system.dark && !antigravity.dual_mode) && antigravity.gemini.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#007A6CFF",
+              "opacity": "antigravity.gemini.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-session-external-value-dark-pct",
+          "name": "dark Antigravity External session value compact percent",
+          "render": "(system.dark && !antigravity.dual_mode && antigravity.external.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#98D0E0FF",
+              "opacity": "antigravity.external.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-session-external-value-light-pct",
+          "name": "light Antigravity External session value compact percent",
+          "render": "((1 - system.dark && !antigravity.dual_mode) && antigravity.external.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#2D6F82FF",
+              "opacity": "antigravity.external.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-weekly-gemini-value-dark-pct",
+          "name": "dark Antigravity Gemini weekly value compact percent",
+          "render": "(system.dark && !antigravity.dual_mode && antigravity.gemini.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#5EEAD4FF",
+              "opacity": "antigravity.gemini.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-weekly-gemini-value-light-pct",
+          "name": "light Antigravity Gemini weekly value compact percent",
+          "render": "((1 - system.dark && !antigravity.dual_mode) && antigravity.gemini.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.gemini.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#007A6CFF",
+              "opacity": "antigravity.gemini.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-weekly-external-value-dark-pct",
+          "name": "dark Antigravity External weekly value compact percent",
+          "render": "(system.dark && !antigravity.dual_mode && antigravity.external.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#98D0E0FF",
+              "opacity": "antigravity.external.opacity"
+            }
+          }
+        },
+        {
+          "id": "antigravity-weekly-external-value-light-pct",
+          "name": "light Antigravity External weekly value compact percent",
+          "render": "((1 - system.dark && !antigravity.dual_mode) && antigravity.external.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "antigravity-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{antigravity.external.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#2D6F82FF",
+              "opacity": "antigravity.external.opacity"
+            }
+          }
+        },
+        {
+          "id": "opencode-session-value-dark-pct",
+          "name": "dark OpenCode 5-hour value compact percent",
+          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "opencode-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{opencode.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#81C784FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "opencode-session-value-light-pct",
+          "name": "light OpenCode 5-hour value compact percent",
+          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "opencode-provider",
+          "x": "0",
+          "y": "8",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{opencode.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1B5E20FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "opencode-weekly-value-dark-pct",
+          "name": "dark OpenCode long-window value compact percent",
+          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "opencode-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{opencode.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#81C784FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "opencode-weekly-value-light-pct",
+          "name": "light OpenCode long-window value compact percent",
+          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "opencode-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{opencode.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1B5E20FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-credits-value-dark-pct",
+          "name": "dark claude credit balance compact percent",
+          "render": "((system.dark) && claude.credits.available) && (!claude.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "claude-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.credits.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F5A623FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-credits-value-light-pct",
+          "name": "light claude credit balance compact percent",
+          "render": "((1 - system.dark) && claude.credits.available) && (!claude.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "claude-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{claude.credits.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#C77700FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "claude-main-text-dark-normal-pct",
+          "name": "dark Claude Main text 5h compact percent",
+          "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.normal.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.default.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F09A7AFF",
+              "opacity": "claude.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-main-text-dark-hover-pct",
+          "name": "dark Claude Main text 7d compact percent",
+          "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.hover.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.default.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#D97757FF",
+              "opacity": "claude.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-main-text-light-normal-pct",
+          "name": "light Claude Main text 5h compact percent",
+          "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.normal.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.default.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#A94F32FF",
+              "opacity": "claude.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-main-text-light-hover-pct",
+          "name": "light Claude Main text 7d compact percent",
+          "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.hover.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.default.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#7C2D12FF",
+              "opacity": "claude.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-x-text-dark-normal-pct",
+          "name": "dark Claude X text 5h compact percent",
+          "render": "(system.dark) && (claude.dual_mode) && (claude.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.normal.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.claude_x.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F09A7AFF",
+              "opacity": "claude.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-x-text-dark-hover-pct",
+          "name": "dark Claude X text 7d compact percent",
+          "render": "(system.dark) && (claude.dual_mode) && (claude.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.hover.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.claude_x.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#D97757FF",
+              "opacity": "claude.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-x-text-light-normal-pct",
+          "name": "light Claude X text 5h compact percent",
+          "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.normal.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.claude_x.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#A94F32FF",
+              "opacity": "claude.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "claude-x-text-light-hover-pct",
+          "name": "light Claude X text 7d compact percent",
+          "render": "((1 - system.dark)) && (claude.dual_mode) && (claude.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * claude.hover.opacity",
+          "parent": "claude-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.claude.claude_x.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#7C2D12FF",
+              "opacity": "claude.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-credits-value-dark-pct",
+          "name": "dark codex credit balance compact percent",
+          "render": "((system.dark) && codex.credits.available) && (!codex.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "codex-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{codex.credits.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F5A623FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "codex-credits-value-light-pct",
+          "name": "light codex credit balance compact percent",
+          "render": "((1 - system.dark) && codex.credits.available) && (!codex.dual_mode) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "codex-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{codex.credits.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#C77700FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "codex-main-text-dark-normal-pct",
+          "name": "dark Codex Main text 5h compact percent",
+          "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.normal.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.default.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#60A5FAFF",
+              "opacity": "codex.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-main-text-dark-hover-pct",
+          "name": "dark Codex Main text 7d compact percent",
+          "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.hover.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.default.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#3B82F6FF",
+              "opacity": "codex.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-main-text-light-normal-pct",
+          "name": "light Codex Main text 5h compact percent",
+          "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.normal.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.default.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#2563EBFF",
+              "opacity": "codex.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-main-text-light-hover-pct",
+          "name": "light Codex Main text 7d compact percent",
+          "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.hover.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "7",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.default.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1D4ED8FF",
+              "opacity": "codex.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-x-text-dark-normal-pct",
+          "name": "dark Codex X text 5h compact percent",
+          "render": "(system.dark) && (codex.dual_mode) && (codex.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.normal.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.codex_x.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#60A5FAFF",
+              "opacity": "codex.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-x-text-dark-hover-pct",
+          "name": "dark Codex X text 7d compact percent",
+          "render": "(system.dark) && (codex.dual_mode) && (codex.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.hover.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.codex_x.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#3B82F6FF",
+              "opacity": "codex.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-x-text-light-normal-pct",
+          "name": "light Codex X text 5h compact percent",
+          "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.normal.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.codex_x.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#2563EBFF",
+              "opacity": "codex.normal.opacity"
+            }
+          }
+        },
+        {
+          "id": "codex-x-text-light-hover-pct",
+          "name": "light Codex X text 7d compact percent",
+          "render": "((1 - system.dark)) && (codex.dual_mode) && (codex.hover.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity * codex.hover.opacity",
+          "parent": "codex-provider",
+          "x": "12",
+          "y": "26",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{accounts.codex.codex_x.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#1D4ED8FF",
+              "opacity": "codex.hover.opacity"
+            }
+          }
+        },
+        {
+          "id": "grok-pool-value-dark-pct",
+          "name": "dark Grok pool value compact percent",
+          "render": "((system.dark) && !grok.credits.available) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "grok-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{grok.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#C4B5FDFF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "grok-pool-value-light-pct",
+          "name": "light Grok pool value compact percent",
+          "render": "((1 - system.dark) && !grok.credits.available) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "grok-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{grok.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#6D28D9FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "grok-credits-value-dark-pct",
+          "name": "dark Grok on-demand value compact percent",
+          "render": "((system.dark) && grok.credits.available) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "grok-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{grok.credits.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F5A623FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "grok-credits-value-light-pct",
+          "name": "light Grok on-demand value compact percent",
+          "render": "((1 - system.dark) && grok.credits.available) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "grok-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{grok.credits.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#C77700FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "copilot-pool-value-dark-pct",
+          "name": "dark Copilot pool value compact percent",
+          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "copilot-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{copilot.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "left",
+            "color": {
+              "color": "#F9A8D4FF",
+              "opacity": "1"
+            }
+          }
+        },
+        {
+          "id": "copilot-pool-value-light-pct",
+          "name": "light Copilot pool value compact percent",
+          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "visibility": "display.percent_opacity",
+          "parent": "copilot-provider",
+          "x": "0",
+          "y": "25",
+          "width": "30",
+          "height": "13",
+          "background": {
+            "type": "none"
+          },
+          "border": null,
+          "corner_radius": "0",
+          "layout": "freeform",
+          "align": "start",
+          "gap": "0",
+          "content": {
+            "type": "text",
+            "template": "{copilot.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "11",
             "weight": "medium",
             "rendering": "clear_type",
             "contrast": "1",

@@ -4245,6 +4245,11 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
         assert_eq!(tick.parent, gauge.parent);
         assert_eq!(tick.render.0, gauge.render.0);
         let stripped = tick.visibility.0.strip_prefix("(100) * ").unwrap();
+        // Ticks fade out together with the collapsing bar in mode 3, but keep
+        // the same hover crossfade factor as their gauge.
+        let stripped = stripped
+            .strip_suffix(" * (1 - display.mode_bar_progress)")
+            .unwrap();
         let stripped = stripped
             .strip_suffix(" * antigravity.gemini.opacity")
             .or_else(|| stripped.strip_suffix(" * antigravity.external.opacity"))
@@ -4279,6 +4284,10 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
         context.insert("codex.hover.opacity", 1.0);
         for count in 1..=ProviderId::ALL.len() {
             context.insert("providers.count", count as f64);
+            // Gauge widths now come from a single precomputed binding rather
+            // than from `providers.count`, so feed the row width for this count
+            // the same way the render loop does.
+            context.insert("display.bar_width", compact_bar_full_width(count));
             let start = evaluate(&gauge.x.0, &context).unwrap();
             let end = start + evaluate(&gauge.width.0, &context).unwrap();
             assert_eq!(evaluate(&tick.width.0, &context).unwrap(), 1.0);
@@ -4408,6 +4417,9 @@ fn compact_dual_mode_geometry_morphs_with_hover_phase() {
         .filter(|o| {
             o.id.starts_with("antigravity-")
                 && o.id.contains("-text-")
+                // Compact percent twins are new, but their rows are fixed too;
+                // this test counts the original value labels only.
+                && !o.id.ends_with("-pct")
                 && matches!(o.content, SceneContent::Text { .. })
         })
         .collect::<Vec<_>>();
@@ -4850,4 +4862,301 @@ fn render_frame_benchmark() {
              max={max:.3} ms  (tick budget 16.0 ms)"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 5: three Compact view modes, compact percent twins, hover in any mode.
+// ---------------------------------------------------------------------------
+
+/// The root width expression must reproduce the accepted (Stage 4) geometry
+/// exactly at mode 1, then shrink monotonically through modes 2 and 3.
+#[test]
+fn compact_view_mode_widths_collapse_and_mode_one_is_exact() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    assert!(theme.validate().is_empty(), "{:?}", theme.validate());
+
+    let providers = ProviderSet::from_enabled([
+        ProviderId::Claude,
+        ProviderId::Codex,
+        ProviderId::Antigravity,
+        ProviderId::OpenCode,
+    ]);
+    let runtime = |phase: f64, view_mode: u8| {
+        ThemeRuntime::from_providers(providers)
+            .with_view_mode(view_mode)
+            .with_mode_phase(phase)
+    };
+    let width = |phase: f64, view_mode: u8| {
+        resolve_surface_content_size(&theme, 0, None, runtime(phase, view_mode)).0
+    };
+
+    let full = width(0.0, 1);
+    let bars = width(1.0, 2);
+    let compact = width(2.0, 3);
+    assert!(
+        full > bars,
+        "mode 2 must be narrower than mode 1: {full}/{bars}"
+    );
+    assert!(
+        bars > compact,
+        "mode 3 must be the narrowest: {bars}/{compact}"
+    );
+    assert!(
+        compact * 2 < full,
+        "mode 3 must be at least 2x narrower than mode 1: {full}/{compact}"
+    );
+
+    // The mechanical replacement onto display.* is only safe if mode 1 is
+    // byte-for-byte the old geometry: evaluate both expressions in one context.
+    let original = "providers.count * (ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * 28 + providers.cursor.enabled * 18 + providers.claude.enabled * claude.model.fable.available * 96 + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12";
+    let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime(0.0, 1));
+    assert_eq!(
+        evaluate(&theme.surfaces[0].width.0, &context).unwrap(),
+        evaluate(original, &context).unwrap(),
+        "mode 1 geometry drifted from the accepted Stage 4 layout"
+    );
+}
+
+/// Every value label now has a compact `%` twin. The twins use the existing
+/// `:usage_badge` formatter (bare percentage, no `· 34m` tail), are gated by
+/// `display.percent_opacity`, and dual-mode rows switch the value on hover via
+/// the very same `*.normal/hover.opacity` crossfade the gauges use.
+#[test]
+fn compact_percent_twins_crossfade_values_on_hover_in_every_mode() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let by_id = |id: &str| children.iter().find(|o| o.id == id).unwrap();
+
+    let labels = children.iter().filter(|o| {
+        matches!(o.content, SceneContent::Text { .. })
+            && !o.id.contains("-marker-")
+            && !o.id.ends_with("-pct")
+    });
+    let mut twins = 0;
+    for label in labels {
+        let twin = by_id(&format!("{}-pct", label.id));
+        twins += 1;
+        assert!(
+            twin.render.0.contains("display.percent_opacity > 0.01"),
+            "{} is not gated by the mode",
+            twin.id
+        );
+        assert_eq!(twin.width.0, "30", "{}", twin.id);
+        assert_eq!(twin.parent, label.parent, "{}", twin.id);
+        assert_eq!(twin.y.0, label.y.0, "{}", twin.id);
+        // Dual-mode rows keep the 12 px marker column; solo rows start at 0.
+        // A wrong x here would overlap the fixed o/x marker in mode 3.
+        let expected_x = if label.x.0.starts_with("12 + ") {
+            "12"
+        } else {
+            "0"
+        };
+        assert_eq!(twin.x.0, expected_x, "{}", twin.id);
+        match &twin.content {
+            SceneContent::Text { template, .. } => assert!(
+                template.contains(":usage_badge"),
+                "{} must show a bare percentage, got {template}",
+                twin.id
+            ),
+            other => panic!("{} is not text: {other:?}", twin.id),
+        }
+    }
+    assert_eq!(twins, 60);
+
+    // A dual-mode row: mode controls appearance, hover controls the value.
+    let normal = by_id("claude-main-text-dark-normal-pct");
+    let hover = by_id("claude-main-text-dark-hover-pct");
+    assert_eq!(
+        normal.visibility.0,
+        "display.percent_opacity * claude.normal.opacity"
+    );
+    assert_eq!(
+        hover.visibility.0,
+        "display.percent_opacity * claude.hover.opacity"
+    );
+
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+    let visibility =
+        |ctx: &DataContext, object: &SceneObject| evaluate(&object.visibility.0, ctx).unwrap();
+    for (percent_opacity, normal_opacity, hover_opacity, expect_normal, expect_hover) in [
+        (0.0, 1.0, 0.0, 0.0, 0.0),     // modes 1 / 2, no hover
+        (0.0, 0.0, 1.0, 0.0, 0.0),     // modes 1 / 2, hovered
+        (100.0, 1.0, 0.0, 100.0, 0.0), // mode 3, no hover
+        (100.0, 0.0, 1.0, 0.0, 100.0), // mode 3, hovered
+        (100.0, 0.4, 0.4, 40.0, 40.0), // mode 3, mid-crossfade
+    ] {
+        context.insert("display.percent_opacity", percent_opacity);
+        context.insert("claude.normal.opacity", normal_opacity);
+        context.insert("claude.hover.opacity", hover_opacity);
+        assert_eq!(visibility(&context, normal), expect_normal, "normal layer");
+        assert_eq!(visibility(&context, hover), expect_hover, "hover layer");
+    }
+}
+
+/// Hover phases are inserted unconditionally, so a gauge morph is available in
+/// modes 1/2 and a `%` value switch in mode 3 regardless of `mode_phase`.
+#[test]
+fn hover_phases_are_available_in_every_view_mode() {
+    for (phase, view_mode) in [(0.0, 1u8), (0.5, 2), (1.0, 2), (1.5, 3), (2.0, 3)] {
+        let runtime = ThemeRuntime::default()
+            .with_view_mode(view_mode)
+            .with_mode_phase(phase)
+            .with_claude_state(true, true, false, 0.75)
+            .with_codex_state(false, true, false, 0.25)
+            .with_antigravity_pools(true, true, 0.4)
+            .with_opencode_state(0.9);
+        let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+        assert_eq!(context.get("display.mode_phase"), Some(phase));
+        assert_eq!(
+            context.get("claude.hover_phase"),
+            Some(0.75),
+            "phase {phase}"
+        );
+        assert_eq!(
+            context.get("codex.hover_phase"),
+            Some(0.25),
+            "phase {phase}"
+        );
+        // Antigravity's crossfade runs 1 = normal, 0 = hover.
+        assert!(
+            (context.get("antigravity.hover_phase").unwrap() - 0.6).abs() < 1e-9,
+            "phase {phase}"
+        );
+        assert_eq!(
+            context.get("opencode.hover_phase"),
+            Some(0.9),
+            "phase {phase}"
+        );
+    }
+}
+
+/// Gauges collapse to zero width in mode 3, labels fade out on 1 -> 2, and the
+/// compact `%` appears on 2 -> 3. Pace ticks fade out with the collapsing bar.
+#[test]
+fn compact_gauges_labels_and_percent_follow_the_mode_phase() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let by_id = |id: &str| children.iter().find(|o| o.id == id).unwrap();
+    let bar = compact_bar_full_width(ProviderId::ALL.len());
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+
+    for phase in [0.0_f64, 0.5, 1.0, 1.5, 2.0] {
+        let a = phase.min(1.0);
+        let b = (phase - 1.0).clamp(0.0, 1.0);
+        context.insert("display.bar_width", bar * (1.0 - b));
+        context.insert("display.text_opacity", 100.0 * (1.0 - a));
+        context.insert("display.percent_opacity", 100.0 * b);
+        context.insert("display.mode_bar_progress", b);
+
+        let gauge = by_id("claude-session-segments-dark");
+        assert_eq!(gauge.width.0, "display.bar_width");
+        assert_eq!(evaluate(&gauge.width.0, &context).unwrap(), bar * (1.0 - b));
+
+        let label = by_id("claude-session-value-dark");
+        assert_eq!(
+            evaluate(&label.visibility.0, &context).unwrap(),
+            100.0 * (1.0 - a)
+        );
+
+        let percent = by_id("claude-session-value-dark-pct");
+        assert_eq!(
+            evaluate(&percent.visibility.0, &context).unwrap(),
+            100.0 * b
+        );
+
+        let tick = by_id("claude-session-segments-dark-pace");
+        context.insert("claude.session.expected_available", 1.0);
+        context.insert("display.show_pace", 1.0);
+        assert_eq!(
+            evaluate(&tick.visibility.0, &context).unwrap(),
+            100.0 * (1.0 - b),
+            "tick at phase {phase}"
+        );
+    }
+}
+
+/// Manual visual acceptance: all three modes in dark/light, at rest and hovered.
+/// Run with: cargo test --locked render_view_mode_previews -- --ignored --nocapture
+#[test]
+#[ignore = "writes preview PNGs for manual visual acceptance"]
+fn render_view_mode_previews() {
+    use crate::models::{AppUsageData, UsageData, UsageSection};
+
+    let raw = include_str!("../themes/compact-fluent-quad.json");
+    let out = std::env::temp_dir()
+        .join("opencode")
+        .join("s5-mode-previews");
+    std::fs::create_dir_all(&out).unwrap();
+    let section = |percentage: f64| UsageSection {
+        available: true,
+        percentage,
+        resets_at: None,
+    };
+    let data = AppUsageData::from_iter(ProviderId::ALL.into_iter().map(|provider| {
+        (
+            provider,
+            UsageData {
+                session: section(12.0),
+                weekly: section(45.0),
+                monthly: Some(section(60.0)),
+                ..Default::default()
+            },
+        )
+    }));
+
+    for dark in [true, false] {
+        let forced = raw.replace("system.dark", if dark { "1" } else { "0" });
+        let theme: ThemeDocument = serde_json::from_str(&forced).unwrap();
+        assert!(theme.validate().is_empty(), "{:?}", theme.validate());
+        for phase in [0.0_f64, 0.5, 1.0, 1.5, 2.0] {
+            let view_mode = if phase < 0.5 {
+                1
+            } else if phase < 1.5 {
+                2
+            } else {
+                3
+            };
+            for hover in [0.0_f64, 1.0] {
+                let runtime = ThemeRuntime::from_providers(ProviderSet::from_enabled([
+                    ProviderId::Claude,
+                    ProviderId::Codex,
+                    ProviderId::Antigravity,
+                    ProviderId::OpenCode,
+                ]))
+                .with_view_mode(view_mode)
+                .with_mode_phase(phase)
+                .with_claude_state(true, true, true, hover)
+                .with_codex_state(true, true, true, hover)
+                .with_antigravity_pools(true, true, 1.0 - hover)
+                .with_opencode_state(hover)
+                .with_show_pace(true);
+                let rendered = render_theme_surface_with_runtime_at_scale(
+                    &theme,
+                    0,
+                    Some(&data),
+                    runtime,
+                    1.5,
+                );
+                assert!(
+                    rendered.warnings.is_empty(),
+                    "warnings at phase {phase}, hover {hover}: {:?}",
+                    rendered.warnings
+                );
+                let name = format!(
+                    "mode-{}-phase-{:03.0}-hover-{:03.0}-{}.png",
+                    view_mode,
+                    phase * 100.0,
+                    hover * 100.0,
+                    if dark { "dark" } else { "light" }
+                );
+                let path = out.join(name);
+                write_preview_png(&rendered, &path, dark);
+                println!("{}", path.display());
+            }
+        }
+    }
+    println!("mode previews in {}", out.display());
 }
