@@ -49,7 +49,13 @@ pub(super) unsafe extern "system" fn wnd_proc(
         // never activated anyway, so answer here and keep Explorer out of it.
         WM_MOUSEACTIVATE => LRESULT(MA_NOACTIVATE as isize),
         // Same parent forwarding: the surface has no use for them either.
-        WM_MOUSEWHEEL | WM_MOUSEHWHEEL | WM_APPCOMMAND | WM_CONTEXTMENU => LRESULT(0),
+        WM_MOUSEHWHEEL | WM_APPCOMMAND | WM_CONTEXTMENU => LRESULT(0),
+        // A wheel notch over the widget drives the global view mode. Return 0
+        // so DefWindowProc never forwards the wheel to Explorer's taskbar.
+        WM_MOUSEWHEEL => {
+            handle_mouse_wheel(hwnd, wparam);
+            LRESULT(0)
+        }
         WM_PAINT => {
             let mut ps = PAINTSTRUCT::default();
             let _ = BeginPaint(hwnd, &mut ps);
@@ -640,9 +646,9 @@ pub(super) unsafe extern "system" fn wnd_proc(
                     render_layered();
                 }
             } else if released.pending {
-                if let Some((surface, object)) = mouse_target_at(hwnd, lparam) {
-                    schedule_or_dispatch_click(hwnd, surface, object);
-                }
+                // A release with no drag: either an authored JSON click action
+                // or, when the object has none, an immediate view-mode bounce.
+                handle_view_mode_click(hwnd, lparam);
             }
             LRESULT(0)
         }

@@ -195,6 +195,148 @@ pub(super) fn dispatch_double_click(hwnd: HWND, surface_index: usize, object_id:
     let _ = hwnd;
 }
 
+/// A theme-authored `click` action keeps its old routing (including the
+/// double-click delay). Only a click over an object with no click action
+/// bounces the global view mode; for such objects the wheel is the sole mode
+/// input. Keeping this decision pure makes the priority rule testable.
+pub(super) fn click_changes_view_mode(has_click_handler: bool) -> bool {
+    !has_click_handler
+}
+
+/// Route a left-button release that did not start a drag. Both the primary
+/// surface and every mirror/desktop surface call this, so a click on any
+/// widget advances the ONE global view mode. Outside the widget the common
+/// hit-test returns `None` and nothing changes.
+pub(super) fn handle_view_mode_click(hwnd: HWND, lparam: LPARAM) {
+    let Some((surface, object)) = mouse_target_at(hwnd, lparam) else {
+        return;
+    };
+    let has_click = mouse_handler_exists(surface, &object, MouseEventKind::Click);
+    if click_changes_view_mode(has_click) {
+        advance_view_mode_by_click(hwnd);
+    } else {
+        schedule_or_dispatch_click(hwnd, surface, object);
+    }
+}
+
+/// A click bounces `1 -> 2 -> 3 -> 2 -> 1` from the stored direction. It is
+/// handled directly in `WM_LBUTTONUP`, so there is no `GetDoubleClickTime()`
+/// wait before the mode changes.
+pub(super) fn advance_view_mode_by_click(hwnd: HWND) {
+    let next = {
+        let state = lock_state();
+        state
+            .as_ref()
+            .map(|state| super::next_view_mode(state.view_mode, state.mode_direction))
+    };
+    if let Some((mode, direction)) = next {
+        super::apply_view_mode(hwnd, mode, direction);
+    }
+}
+
+/// Win32 `WHEEL_DELTA`: one physical wheel notch is 120 units. High-resolution
+/// wheels split that notch into several smaller `WM_MOUSEWHEEL` messages.
+const WHEEL_DELTA: i32 = 120;
+
+/// Accumulates partial wheel deltas so one physical notch advances the view
+/// mode exactly once. The state is global, like the view mode itself.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) struct WheelAccumulator {
+    remainder: i32,
+}
+
+impl WheelAccumulator {
+    /// A partial remainder expires after this gap, so a stale scroll cannot
+    /// combine with a later gesture.
+    const RESET_AFTER: Duration = Duration::from_millis(250);
+
+    /// Fold one wheel message. Returns true when the message contains at least
+    /// one complete notch. A direction reversal or an expired remainder drops
+    /// the partial delta. All complete notches in the message are consumed, so
+    /// one message advances at most one mode and cannot run away.
+    pub(super) fn push(&mut self, delta: i32, elapsed: Duration) -> bool {
+        if delta == 0 {
+            return false;
+        }
+        if elapsed >= Self::RESET_AFTER || delta.signum() != self.remainder.signum() {
+            self.remainder = 0;
+        }
+        self.remainder += delta;
+        let notches = self.remainder.abs() / WHEEL_DELTA;
+        if notches == 0 {
+            return false;
+        }
+        self.remainder -= self.remainder.signum() * notches * WHEEL_DELTA;
+        true
+    }
+}
+
+static WHEEL_ACCUM: OnceLock<Mutex<(WheelAccumulator, Option<Instant>)>> = OnceLock::new();
+
+fn wheel_notch_ready(delta: i32) -> bool {
+    let cache = WHEEL_ACCUM.get_or_init(|| Mutex::new((WheelAccumulator::default(), None)));
+    let mut entry = cache
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let now = Instant::now();
+    let elapsed = entry
+        .1
+        .map(|last| now.duration_since(last))
+        .unwrap_or(WheelAccumulator::RESET_AFTER);
+    entry.1 = Some(now);
+    entry.0.push(delta, elapsed)
+}
+
+/// Wheel down (negative delta) drives towards mode 3, wheel up towards mode 1.
+/// The wheel sets the direction explicitly and is ignored at a boundary. It is
+/// gated on the cursor being over the widget via the common hit-test, so a
+/// wheel delivered to this window while the pointer is elsewhere is ignored.
+pub(super) fn handle_mouse_wheel(hwnd: HWND, wparam: WPARAM) {
+    let delta = ((wparam.0 >> 16) & 0xffff) as u16 as i16;
+    if delta == 0 || !cursor_over_widget(hwnd) {
+        return;
+    }
+    // Partial deltas from a high-resolution wheel must not each advance a mode;
+    // only a complete accumulated notch may switch the view.
+    if !wheel_notch_ready(i32::from(delta)) {
+        return;
+    }
+    let toward: i8 = if delta > 0 { -1 } else { 1 };
+    let next = {
+        let state = lock_state();
+        state
+            .as_ref()
+            .and_then(|state| super::wheel_view_mode(state.view_mode, toward))
+    };
+    if let Some((mode, direction)) = next {
+        super::apply_view_mode(hwnd, mode, direction);
+    }
+}
+
+/// Rebuild a client-space `LPARAM` from the live cursor. `WM_MOUSEWHEEL`
+/// carries its position in screen coordinates, so its own `lParam` cannot be
+/// handed to `mouse_target_at`; the cursor position is authoritative anyway.
+fn cursor_client_lparam(hwnd: HWND) -> Option<LPARAM> {
+    let mut point = POINT::default();
+    if unsafe { GetCursorPos(&mut point) }.is_err() {
+        return None;
+    }
+    let mut client = [point];
+    unsafe { MapWindowPoints(None, Some(hwnd), &mut client) };
+    let packed = ((client[0].y as u32 & 0xffff) << 16) | (client[0].x as u32 & 0xffff);
+    Some(LPARAM(packed as isize))
+}
+
+/// The root surface carries a non-empty `mouse_events` (the right-click menu),
+/// so a hit-test returning any object — including `"main"` — means the cursor
+/// is over the widget. That single fact is enough to gate a global switch.
+fn cursor_over_widget(hwnd: HWND) -> bool {
+    let Some(lparam) = cursor_client_lparam(hwnd) else {
+        return false;
+    };
+    mouse_target_at(hwnd, lparam).is_some()
+}
+
 /// Theme object whose hover reveals the Antigravity Claude/GPT pool.
 pub(super) const ANTIGRAVITY_HOVER_OBJECT: &str = "antigravity-provider";
 pub(super) const CLAUDE_HOVER_OBJECT: &str = "claude-provider";
@@ -448,14 +590,10 @@ pub(super) unsafe fn set_surface_cursor(hwnd: HWND) {
 }
 
 unsafe fn surface_cursor_is_clickable(hwnd: HWND) -> bool {
-    let mut point = POINT::default();
-    if GetCursorPos(&mut point).is_err() {
+    let Some(lparam) = cursor_client_lparam(hwnd) else {
         return false;
-    }
-    let mut client = [point];
-    MapWindowPoints(None, Some(hwnd), &mut client);
-    let packed = ((client[0].y as u32 & 0xffff) << 16) | (client[0].x as u32 & 0xffff);
-    let Some((surface, object)) = mouse_target_at(hwnd, LPARAM(packed as isize)) else {
+    };
+    let Some((surface, object)) = mouse_target_at(hwnd, lparam) else {
         return false;
     };
     [
@@ -470,6 +608,91 @@ unsafe fn surface_cursor_is_clickable(hwnd: HWND) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn theme_click_actions_keep_priority_over_view_mode_switching() {
+        assert!(
+            click_changes_view_mode(false),
+            "a plain click over a widget with no click action must bounce the mode"
+        );
+        assert!(
+            !click_changes_view_mode(true),
+            "an authored JSON click keeps its old routing; only the wheel changes the mode"
+        );
+    }
+
+    #[test]
+    fn a_standard_wheel_notch_advances_exactly_once() {
+        let mut up = WheelAccumulator::default();
+        assert!(up.push(120, Duration::from_millis(1)));
+        assert_eq!(up.remainder, 0);
+        assert!(!up.push(0, Duration::from_millis(1)));
+
+        let mut down = WheelAccumulator::default();
+        assert!(down.push(-120, Duration::from_millis(1)));
+        assert_eq!(down.remainder, 0);
+    }
+
+    #[test]
+    fn high_resolution_wheel_deltas_accumulate_to_one_notch() {
+        let mut acc = WheelAccumulator::default();
+        assert!(!acc.push(40, Duration::from_millis(1)));
+        assert!(!acc.push(40, Duration::from_millis(1)));
+        assert_eq!(acc.remainder, 80);
+        assert!(
+            acc.push(40, Duration::from_millis(1)),
+            "three partial deltas complete exactly one notch"
+        );
+        assert_eq!(acc.remainder, 0);
+        // A second physical notch again needs three partial messages.
+        assert!(!acc.push(40, Duration::from_millis(1)));
+        assert!(!acc.push(40, Duration::from_millis(1)));
+        assert!(acc.push(40, Duration::from_millis(1)));
+
+        // A partial remainder carries within one continuous gesture.
+        let mut carry = WheelAccumulator::default();
+        assert!(!carry.push(80, Duration::from_millis(1)));
+        assert!(carry.push(120, Duration::from_millis(1)));
+        assert_eq!(carry.remainder, 80);
+        assert!(carry.push(40, Duration::from_millis(1)));
+        assert_eq!(carry.remainder, 0);
+    }
+
+    #[test]
+    fn wheel_accumulator_resets_on_direction_change_and_idle_gap() {
+        let mut acc = WheelAccumulator::default();
+        assert!(!acc.push(80, Duration::from_millis(1)));
+        assert!(
+            !acc.push(-40, Duration::from_millis(1)),
+            "reversing direction drops the partial remainder"
+        );
+        assert_eq!(acc.remainder, -40);
+        assert!(!acc.push(-40, Duration::from_millis(1)));
+        assert!(acc.push(-40, Duration::from_millis(1)));
+        assert_eq!(acc.remainder, 0);
+
+        let mut stale = WheelAccumulator::default();
+        assert!(!stale.push(80, Duration::from_millis(1)));
+        assert!(
+            !stale.push(40, Duration::from_millis(300)),
+            "a stale partial must not complete a notch"
+        );
+        assert_eq!(stale.remainder, 40);
+    }
+
+    #[test]
+    fn one_wheel_message_never_advances_more_than_one_mode() {
+        let mut acc = WheelAccumulator::default();
+        assert!(
+            acc.push(360, Duration::from_millis(1)),
+            "three coalesced notches still emit one step"
+        );
+        assert_eq!(acc.remainder, 0, "all complete notches are consumed");
+        assert!(
+            !acc.push(40, Duration::from_millis(1)),
+            "no leftover notch carries into the next message"
+        );
+    }
 
     #[test]
     fn duplicate_mouse_moves_are_coalesced_but_real_moves_are_not() {

@@ -121,8 +121,7 @@ struct AppState {
     view_mode: u8,
     mode_phase: f64,
     /// +1 while the click cycle moves 1 -> 3, -1 while it moves back.
-    /// Read by the click/wheel input wiring in Stage 4.
-    #[allow(dead_code)]
+    /// The wheel overwrites this explicitly; clicks bounce off the ends.
     mode_direction: i8,
     mode_animation: Option<PhaseAnimation>,
     accounts: crate::accounts::AccountSettings,
@@ -2378,7 +2377,13 @@ unsafe extern "system" fn mirror_wnd_proc(
         WM_NCHITTEST => LRESULT(HTCLIENT as isize),
         // See the primary surface: DefWindowProc forwards both to the parent.
         WM_MOUSEACTIVATE => LRESULT(MA_NOACTIVATE as isize),
-        WM_MOUSEWHEEL | WM_MOUSEHWHEEL | WM_APPCOMMAND | WM_CONTEXTMENU => LRESULT(0),
+        WM_MOUSEHWHEEL | WM_APPCOMMAND | WM_CONTEXTMENU => LRESULT(0),
+        // Same as the primary surface: wheel input over any mirror/desktop
+        // surface switches the one global view mode without parent forwarding.
+        WM_MOUSEWHEEL => {
+            handle_mouse_wheel(hwnd, wparam);
+            LRESULT(0)
+        }
         WM_SETCURSOR => {
             set_surface_cursor(hwnd);
             LRESULT(1)
@@ -2406,9 +2411,9 @@ unsafe extern "system" fn mirror_wnd_proc(
                 })
             };
             if !suppressed {
-                if let Some((surface, object)) = mouse_target_at(hwnd, lparam) {
-                    schedule_or_dispatch_click(hwnd, surface, object);
-                }
+                // Mirrors/desktop surfaces share the SAME global view mode as
+                // the primary surface, so route their plain clicks here too.
+                handle_view_mode_click(hwnd, lparam);
             }
             LRESULT(0)
         }
@@ -3564,6 +3569,7 @@ const ANTIGRAVITY_CROSSFADE_DURATION_MS: u64 = 200;
 const CODEX_CROSSFADE_DURATION_MS: u64 = 200;
 const CLAUDE_CROSSFADE_DURATION_MS: u64 = 200;
 const OPENCODE_CROSSFADE_DURATION_MS: u64 = 200;
+const MODE_TRANSITION_DURATION_MS: u64 = 200;
 const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 16;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3671,8 +3677,8 @@ impl PhaseAnimation {
 }
 
 /// Bounce the view-mode cycle at the ends: `1 -> 2 -> 3 -> 2 -> 1 -> ...`.
-/// Consumed by the click/wheel input wiring in Stage 4.
-#[allow(dead_code)]
+/// A click uses the direction stored in the global state, so reaching either
+/// end reverses the next click instead of stopping the cycle.
 pub(super) fn next_view_mode(current: u8, direction: i8) -> (u8, i8) {
     let next = i16::from(current) + i16::from(direction);
     match next {
@@ -3680,6 +3686,48 @@ pub(super) fn next_view_mode(current: u8, direction: i8) -> (u8, i8) {
         0 => (2, 1),
         n => (n.clamp(1, 3) as u8, direction),
     }
+}
+
+/// One wheel notch moves a single step towards the requested end: `+1`
+/// (wheel down) heads to mode 3, `-1` (wheel up) to mode 1. Unlike a click,
+/// the wheel overwrites the bounce direction explicitly, so it can reverse a
+/// click cycle mid-way. A step past either boundary is ignored.
+pub(super) fn wheel_view_mode(current: u8, toward: i8) -> Option<(u8, i8)> {
+    if toward != 1 && toward != -1 {
+        return None;
+    }
+    let next = i16::from(current) + i16::from(toward);
+    (1..=3).contains(&next).then_some((next as u8, toward))
+}
+
+/// A view-mode segment always starts from the CURRENT phase, so an
+/// interrupting click or wheel notch eases from the reached value instead of
+/// jumping back to the previous mode's phase.
+pub(super) fn mode_phase_animation(current: f64, mode: u8) -> PhaseAnimation {
+    PhaseAnimation::hover(
+        current,
+        (f64::from(mode.clamp(1, 3)) - 1.0).clamp(0.0, 2.0),
+        Duration::from_millis(MODE_TRANSITION_DURATION_MS),
+    )
+}
+
+/// Install a new view mode into the single global state, persist it and drive
+/// it with the shared animation timer. Every surface reads the same state, so
+/// one input switches all active widgets at the same phase.
+pub(super) fn apply_view_mode(hwnd: HWND, mode: u8, direction: i8) {
+    {
+        let mut state = lock_state();
+        let Some(state) = state.as_mut() else {
+            return;
+        };
+        let mode = mode.clamp(1, 3);
+        state.view_mode = mode;
+        state.mode_direction = direction;
+        state.mode_animation = Some(mode_phase_animation(state.mode_phase, mode));
+    }
+    save_state_settings();
+    ensure_crossfade_timer(hwnd);
+    render_layered_animation();
 }
 
 pub(super) fn stop_crossfade_timer_if_idle(hwnd: HWND) {
@@ -4746,7 +4794,10 @@ mod credential_watch_worker_tests {
 
 #[cfg(test)]
 mod phase_animation_tests {
-    use super::{interpolate_phase, next_view_mode, AppState, Easing, PhaseAnimation};
+    use super::{
+        interpolate_phase, mode_phase_animation, next_view_mode, wheel_view_mode, AppState, Easing,
+        PhaseAnimation,
+    };
     use std::time::Duration;
 
     #[test]
@@ -4918,5 +4969,81 @@ mod phase_animation_tests {
         assert_eq!(next_view_mode(1, -1), (2, 1));
         assert_eq!(next_view_mode(2, 1), (3, 1));
         assert_eq!(next_view_mode(2, -1), (1, -1));
+    }
+
+    #[test]
+    fn wheel_steps_towards_each_end_and_ignores_impossible_steps() {
+        // Wheel down (+1) heads to mode 3, wheel up (-1) heads to mode 1.
+        assert_eq!(wheel_view_mode(1, 1), Some((2, 1)));
+        assert_eq!(wheel_view_mode(2, 1), Some((3, 1)));
+        assert_eq!(wheel_view_mode(3, 1), None, "no step past mode 3");
+        assert_eq!(wheel_view_mode(3, -1), Some((2, -1)));
+        assert_eq!(wheel_view_mode(2, -1), Some((1, -1)));
+        assert_eq!(wheel_view_mode(1, -1), None, "no step below mode 1");
+        // The wheel overwrites the bounce direction explicitly at any mode.
+        assert_eq!(wheel_view_mode(2, 1), Some((3, 1)));
+        assert_eq!(wheel_view_mode(2, -1), Some((1, -1)));
+        // A zero delta or a stray magnitude is not a wheel step.
+        assert_eq!(wheel_view_mode(2, 0), None);
+        assert_eq!(wheel_view_mode(2, 2), None);
+        assert_eq!(wheel_view_mode(2, -2), None);
+    }
+
+    #[test]
+    fn mode_animation_eases_from_the_current_phase_over_200_ms() {
+        let anim = mode_phase_animation(0.0, 3);
+        assert_eq!(anim.start, 0.0);
+        assert_eq!(anim.target, 2.0);
+        assert_eq!(anim.easing, Easing::Smoothstep);
+        assert_eq!(anim.duration, Duration::from_millis(200));
+        // Interrupting mid-segment starts from the reached value, not from
+        // the previous mode's endpoint.
+        let reached = interpolate_phase(0.0, 2.0, 0.5, Easing::Smoothstep);
+        let redirected = mode_phase_animation(reached, 1);
+        assert_eq!(redirected.start, reached);
+        assert_eq!(redirected.target, 0.0);
+        assert_eq!(redirected.easing, Easing::Smoothstep);
+        assert_eq!(redirected.duration, Duration::from_millis(200));
+        // A hand-edited/out-of-range mode cannot leave the 0..2 phase.
+        assert_eq!(mode_phase_animation(1.0, 0).target, 0.0);
+        assert_eq!(mode_phase_animation(1.0, 9).target, 2.0);
+    }
+
+    #[test]
+    fn mixed_click_and_wheel_inputs_keep_one_global_cycle() {
+        let mut mode = 1u8;
+        let mut direction = 1i8;
+        let mut trace = vec![mode];
+
+        // Two clicks: 1 -> 2 -> 3.
+        for _ in 0..2 {
+            let (next, dir) = next_view_mode(mode, direction);
+            mode = next;
+            direction = dir;
+            trace.push(mode);
+        }
+        assert_eq!(trace, vec![1, 2, 3]);
+        assert_eq!(direction, 1);
+
+        // Wheel up from 3 sets the reverse direction explicitly: 3 -> 2.
+        let (next, dir) = wheel_view_mode(mode, -1).expect("wheel up is possible at mode 3");
+        mode = next;
+        direction = dir;
+        trace.push(mode);
+        assert_eq!((mode, direction), (2, -1));
+
+        // A click now continues back to 1 instead of bouncing forward again.
+        let (next, dir) = next_view_mode(mode, direction);
+        mode = next;
+        direction = dir;
+        trace.push(mode);
+        assert_eq!((mode, direction), (1, -1));
+
+        // Wheel up at the lower boundary is ignored; the next click reverses.
+        assert_eq!(wheel_view_mode(mode, -1), None);
+        let (next, dir) = next_view_mode(mode, direction);
+        assert_eq!((next, dir), (2, 1));
+
+        assert_eq!(trace, vec![1, 2, 3, 2, 1]);
     }
 }
