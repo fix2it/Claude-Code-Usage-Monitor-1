@@ -827,11 +827,15 @@ pub(super) unsafe extern "system" fn wnd_proc(
                     {
                         let mut state = lock_state();
                         if let Some(s) = state.as_mut() {
-                            s.show_fable = !s.show_fable;
+                            super::toggle_show_fable(s);
                         }
                     }
                     save_state_settings();
                     render_layered();
+                    // The Fable column changes the root width: a right-pinned
+                    // window moves its left edge, so Win32 sends no
+                    // WM_MOUSELEAVE for a cursor it moved out from under.
+                    super::mouse::revalidate_mouse_hover(hwnd);
                     sync_tray_icon(hwnd);
                 }
                 IDM_FREQ_1MIN | IDM_FREQ_5MIN | IDM_FREQ_15MIN | IDM_FREQ_1HOUR => {
@@ -1451,5 +1455,96 @@ mod tests {
                 "surface forwarded a mouse message to its host"
             );
         }
+    }
+
+    /// The round-2 reviewers converged on one residual gap: the helper test
+    /// cannot detect a revert of the `IDM_SHOW_FABLE` arm to a bare
+    /// `s.show_fable = !s.show_fable`. Dispatching `WM_COMMAND` in a unit test
+    /// would persist settings, repaint layered windows and touch tray/hover
+    /// state, so keep the wiring itself under contract here.
+    #[test]
+    fn show_fable_command_wires_invalidation_and_hover_revalidation() {
+        let source = include_str!("message_loop.rs");
+        let marker = "IDM_SHOW_FABLE => {";
+        let start = source
+            .find(marker)
+            .expect("Show Fable command arm is missing");
+        let mut depth = 0_i32;
+        let mut end = start + marker.len();
+        let mut in_string = false;
+        let mut escaped = false;
+        let mut in_line_comment = false;
+        let mut in_block_comment = false;
+        for (offset, character) in source[start..].char_indices() {
+            let next = source.as_bytes().get(start + offset + 1).copied();
+            if in_line_comment {
+                if character == '\n' {
+                    in_line_comment = false;
+                }
+                continue;
+            }
+            if in_block_comment {
+                if character == '*' && next == Some(b'/') {
+                    in_block_comment = false;
+                }
+                continue;
+            }
+            if in_string {
+                if escaped {
+                    escaped = false;
+                } else if character == '\\' {
+                    escaped = true;
+                } else if character == '"' {
+                    in_string = false;
+                }
+                continue;
+            }
+            match character {
+                '"' => in_string = true,
+                '/' if next == Some(b'/') => in_line_comment = true,
+                '/' if next == Some(b'*') => in_block_comment = true,
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = start + offset + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        assert!(
+            end > start + marker.len() && source[start..end].trim_end().ends_with('}'),
+            "the command arm must be fully extracted"
+        );
+        let arm = &source[start..end];
+
+        let toggle = arm.find("toggle_show_fable").expect(
+            "IDM_SHOW_FABLE must flip the setting through the helper that also drops the cached hover rects",
+        );
+        // Whitespace-insensitive: `show_fable =`, `show_fable=` and `= !` all
+        // count as a direct assignment, while `==` is a comparison and the
+        // `toggle_show_fable(s)` call is not an assignment at all.
+        let bare_assignment = arm.match_indices("show_fable").any(|(index, _)| {
+            let rest = arm[index + "show_fable".len()..].trim_start();
+            rest.starts_with('=') && !rest.starts_with("==")
+        });
+        assert!(
+            !bare_assignment,
+            "a bare field assignment silently restores the stale-hover defect"
+        );
+        let render = arm.find("render_layered()").expect("the arm must repaint");
+        let revalidate = arm
+            .find("revalidate_mouse_hover(hwnd)")
+            .expect("the arm must revalidate hover");
+        assert!(
+            toggle < render,
+            "the cached hover rects must be dropped before the repaint rebuilds them"
+        );
+        assert!(
+            render < revalidate,
+            "hover must be revalidated after the repaint rebuilds the rects"
+        );
     }
 }

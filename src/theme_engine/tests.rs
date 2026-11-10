@@ -4972,8 +4972,8 @@ fn compact_view_mode_widths_collapse_and_mode_one_is_exact() {
     );
 }
 
-/// Only the bars-only mode needs a little extra room before the pinned tray
-/// chevron. Modes 1 and 3 keep their exact geometry; mode 2 gains 6 px.
+/// Every mode and every provider set keeps the same trailing gap before the
+/// pinned tray chevron: one constant 4 px on the root surface width.
 #[test]
 fn compact_all_modes_share_one_trailing_gap() {
     let theme: ThemeDocument =

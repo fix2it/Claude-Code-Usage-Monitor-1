@@ -3716,12 +3716,9 @@ pub(super) fn mode_phase_animation(current: f64, mode: u8) -> PhaseAnimation {
     )
 }
 
-/// Install a new view mode into the single global state, persist it and drive
-/// it with the shared animation timer. Every surface reads the same state, so
-/// one input switches all active widgets at the same phase.
-/// The four provider hit-test rects are cached in logical canvas coordinates.
-/// A view-mode change shrinks that canvas, so the cache belongs to the old
-/// layout and must be rebuilt by the next render.
+/// Drop the four cached provider hit-test rects. They are stored in logical
+/// canvas coordinates, so any change to the widget width (view mode, provider
+/// set, Fable column) makes them stale; the next render rebuilds them.
 fn invalidate_hover_tile_rects(state: &mut AppState) {
     state.antigravity_tile_rect = None;
     state.claude_tile_rect = None;
@@ -3729,6 +3726,18 @@ fn invalidate_hover_tile_rects(state: &mut AppState) {
     state.opencode_tile_rect = None;
 }
 
+/// Toggle the opt-in Fable column and invalidate the geometry-dependent hover
+/// cache. The column changes the root surface width in both built-in themes
+/// (between Claude and Codex in Compact, last in Classic), so enabling or
+/// disabling it shifts the provider hit-test rects.
+fn toggle_show_fable(state: &mut AppState) {
+    state.show_fable = !state.show_fable;
+    invalidate_hover_tile_rects(state);
+}
+
+/// Install a new view mode into the single global state, persist it and drive
+/// it with the shared animation timer. Every surface reads the same state, so
+/// one input switches all active widgets at the same phase.
 pub(super) fn apply_view_mode(hwnd: HWND, mode: u8, direction: i8) {
     {
         let mut state = lock_state();
@@ -4981,6 +4990,44 @@ mod phase_animation_tests {
         assert!(state.claude_tile_rect.is_none());
         assert!(state.codex_tile_rect.is_none());
         assert!(state.opencode_tile_rect.is_none());
+    }
+
+    #[test]
+    fn show_fable_toggle_invalidates_cached_hover_rects() {
+        use super::placement_regression_tests::{placement, state_for};
+        use crate::theme_engine::ThemeDocument;
+
+        fn seed_rects(state: &mut AppState) {
+            state.antigravity_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+            state.claude_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+            state.codex_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+            state.opencode_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+        }
+        fn assert_rects_cleared(state: &AppState) {
+            assert!(
+                state.antigravity_tile_rect.is_none(),
+                "antigravity rect survives"
+            );
+            assert!(state.claude_tile_rect.is_none(), "claude rect survives");
+            assert!(state.codex_tile_rect.is_none(), "codex rect survives");
+            assert!(state.opencode_tile_rect.is_none(), "opencode rect survives");
+        }
+
+        let mut state = state_for(ThemeDocument::starter(), placement("taskbar"));
+        seed_rects(&mut state);
+        let before = state.show_fable;
+
+        super::toggle_show_fable(&mut state);
+        assert_ne!(state.show_fable, before, "the setting must actually flip");
+        assert_rects_cleared(&state);
+
+        // A repaint rebuilds the rects for the new width. The reverse flip must
+        // drop those freshly built rects too, not only the ones from before the
+        // first toggle.
+        seed_rects(&mut state);
+        super::toggle_show_fable(&mut state);
+        assert_eq!(state.show_fable, before, "the toggle must be reversible");
+        assert_rects_cleared(&state);
     }
 
     #[test]
