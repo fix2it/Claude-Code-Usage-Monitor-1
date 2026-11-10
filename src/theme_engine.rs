@@ -1350,6 +1350,8 @@ pub struct ThemeRuntime {
     pub countdown: bool,
     pub use_windows_default_font: bool,
     pub show_pace: bool,
+    /// Opt-in visibility for the Claude "Fable" promo quota column.
+    pub show_fable: bool,
     /// Selected widget view mode (1..3) and its continuous animation phase
     /// (0.0 = mode 1, 1.0 = mode 2, 2.0 = mode 3).
     pub view_mode: u8,
@@ -1382,6 +1384,7 @@ impl Default for ThemeRuntime {
             countdown: false,
             use_windows_default_font: true,
             show_pace: true,
+            show_fable: false,
             view_mode: 1,
             mode_phase: 0.0,
             surface_nest: SurfaceNest::Taskbar,
@@ -1429,6 +1432,7 @@ impl ThemeRuntime {
             countdown: false,
             use_windows_default_font: true,
             show_pace: true,
+            show_fable: false,
             view_mode: 1,
             mode_phase: 0.0,
             surface_nest: SurfaceNest::Taskbar,
@@ -1524,6 +1528,11 @@ impl ThemeRuntime {
 
     pub fn with_show_pace(mut self, show_pace: bool) -> Self {
         self.show_pace = show_pace;
+        self
+    }
+
+    pub fn with_show_fable(mut self, show_fable: bool) -> Self {
+        self.show_fable = show_fable;
         self
     }
 
@@ -1810,6 +1819,7 @@ impl DataContext {
         }
         context.insert("display.countdown", runtime.countdown as u8 as f64);
         context.insert("display.show_pace", runtime.show_pace as u8 as f64);
+        context.insert("display.show_fable", runtime.show_fable as u8 as f64);
         insert_animation_bindings(&mut context, &runtime);
         context.insert(
             "antigravity.gemini.enabled",

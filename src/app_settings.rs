@@ -77,6 +77,10 @@ pub struct SettingsFile {
     pub use_windows_default_font: bool,
     #[serde(default = "default_true")]
     pub show_pace: bool,
+    /// The Claude "Fable" promo quota is normally folded into the general
+    /// limit; the column only appears when the user opts in.
+    #[serde(default)]
+    pub show_fable: bool,
     /// Widget view mode: 1 = full, 2 = bars only, 3 = compact percent.
     /// Persisted so the widget starts in the last selected view.
     #[serde(
@@ -153,6 +157,7 @@ impl Default for SettingsFile {
             usage_countdown: false,
             use_windows_default_font: true,
             show_pace: true,
+            show_fable: false,
             view_mode: default_view_mode(),
             active_theme_path: None,
             dashboard_width: None,
@@ -725,6 +730,28 @@ mod tests {
         let counting_down = decode_settings(r#"{"usage_countdown":true}"#).unwrap();
         assert!(counting_down.usage_countdown);
         assert_eq!(settings_json(&counting_down)["usage_countdown"], true);
+    }
+
+    #[test]
+    fn show_fable_defaults_to_off_and_round_trips() {
+        let settings = SettingsFile::default();
+        assert!(!settings.show_fable);
+        assert_eq!(settings_json(&settings)["show_fable"], false);
+
+        // Legacy settings files without the key must not start showing Fable.
+        let legacy = decode_settings(r#"{"poll_interval_ms":900000}"#).unwrap();
+        assert!(!legacy.show_fable);
+
+        for show_fable in [false, true] {
+            let settings = SettingsFile {
+                show_fable,
+                ..Default::default()
+            };
+            let json = settings_json(&settings);
+            assert_eq!(json["show_fable"], show_fable);
+            let loaded = decode_settings(&json.to_string()).unwrap();
+            assert_eq!(loaded.show_fable, show_fable);
+        }
     }
 
     #[test]

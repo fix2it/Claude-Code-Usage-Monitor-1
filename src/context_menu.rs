@@ -73,6 +73,7 @@ pub enum ContextMenuAction {
     ToggleStartup,
     ToggleTaskbarLock,
     ToggleShowPace,
+    ToggleShowFable,
     ToggleWidget,
     /// Accepted only so menus saved by older versions can be loaded and
     /// cleaned up. New menus cannot create or execute this legacy action.
@@ -335,6 +336,7 @@ pub fn rendered_label(
         "Lock in taskbar" => language.text("Lock in taskbar"),
         "Show widget" => language.text("Show widget"),
         "Show pace" => language.text("Show pace"),
+        "Show Fable" => language.text("Show Fable"),
         _ => label,
     };
     crate::theme_engine::format_template(translated, context)
@@ -466,6 +468,7 @@ pub fn classic_context_menu() -> ContextMenuDocument {
             ),
             ContextMenuItem::action("lock-taskbar", "Lock in taskbar", Action::ToggleTaskbarLock),
             ContextMenuItem::action("show-pace", "Show pace", Action::ToggleShowPace),
+            ContextMenuItem::action("show-fable", "Show Fable", Action::ToggleShowFable),
             ContextMenuItem::submenu("language", "Language", languages),
             ContextMenuItem::separator("settings-separator"),
             ContextMenuItem::action(

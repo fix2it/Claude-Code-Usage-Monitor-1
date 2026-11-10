@@ -620,6 +620,7 @@ pub(super) fn context_menu_preview_action_checked(
         ContextMenuAction::ToggleStartup => startup_enabled,
         ContextMenuAction::ToggleTaskbarLock => settings.lock_taskbar,
         ContextMenuAction::ToggleShowPace => settings.show_pace,
+        ContextMenuAction::ToggleShowFable => settings.show_fable,
         ContextMenuAction::ToggleWidget => theme
             .surfaces
             .iter()

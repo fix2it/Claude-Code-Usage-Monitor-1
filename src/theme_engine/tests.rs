@@ -971,14 +971,16 @@ fn built_in_classic_adds_a_fable_column_when_the_limit_is_available() {
         },
     )]);
     let theme = ThemeDocument::starter();
+    let runtime = ThemeRuntime::new(true, false, false);
 
+    // A reported Fable quota alone no longer grows the Classic widget.
     assert_eq!(
-        resolve_surface_size(
-            &theme,
-            0,
-            Some(&usage),
-            ThemeRuntime::new(true, false, false)
-        ),
+        resolve_surface_size(&theme, 0, Some(&usage), runtime),
+        resolve_surface_size(&theme, 0, None, runtime)
+    );
+    // Opting in restores the +93 px column.
+    assert_eq!(
+        resolve_surface_size(&theme, 0, Some(&usage), runtime.with_show_fable(true)),
         (310, 46)
     );
     assert!(theme.surfaces[0]
@@ -1031,8 +1033,10 @@ fn horizontal_fable_columns_follow_claude_visibility_and_usage_direction() {
         );
         for (countdown, percentage, text) in [(false, 43.0, "Fable 43%"), (true, 57.0, "Fable 57%")]
         {
+            // Fable is opt-in now; the enabled-column checks must opt in.
             let runtime = ThemeRuntime::from_providers(ProviderSet::from_enabled(ProviderId::ALL))
-                .with_countdown(countdown);
+                .with_countdown(countdown)
+                .with_show_fable(true);
             let (width, height) = resolve_surface_size(&theme, 0, Some(&usage), runtime);
             let canvas = Canvas {
                 width,
@@ -1561,7 +1565,7 @@ fn compact_quad_only_grows_when_the_automatic_floating_card_is_present() {
 }
 
 #[test]
-fn compact_fluent_quad_adds_a_fable_column_when_the_limit_is_available() {
+fn compact_fluent_quad_adds_a_fable_column_only_when_opted_in() {
     use crate::models::{UsageData, UsageLimit, UsageSection};
 
     let theme: ThemeDocument =
@@ -1589,8 +1593,16 @@ fn compact_fluent_quad_adds_a_fable_column_when_the_limit_is_available() {
     let runtime = ThemeRuntime::new(true, false, false);
     let (base_width, height) = resolve_surface_size(&theme, 0, None, runtime);
 
+    // A reported Fable quota alone no longer grows the widget: the column is
+    // opt-in, off by default.
     assert_eq!(
         resolve_surface_size(&theme, 0, Some(&usage), runtime),
+        (base_width, height)
+    );
+    // Opting in restores the +96 px column (90 px + 6 px row gap).
+    let opted_in = runtime.with_show_fable(true);
+    assert_eq!(
+        resolve_surface_size(&theme, 0, Some(&usage), opted_in),
         (base_width + 96, height)
     );
     assert!(theme.surfaces[0]
@@ -4221,6 +4233,48 @@ fn show_pace_binding_follows_the_setting() {
 }
 
 #[test]
+fn show_fable_binding_defaults_to_off_and_follows_the_setting() {
+    let defaults = crate::app_settings::SettingsFile::default();
+    assert!(!defaults.show_fable);
+    let context = DataContext::from_usage(None, &Canvas::default());
+    assert_eq!(context.get("display.show_fable"), Some(0.0));
+    for show_fable in [false, true] {
+        let runtime = ThemeRuntime::default().with_show_fable(show_fable);
+        let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+        assert_eq!(
+            context.get("display.show_fable"),
+            Some(show_fable as u8 as f64)
+        );
+    }
+}
+
+/// The Fable column must be hidden (and reserve no width) unless the user
+/// opted in, even when the Claude API reports a Fable quota.
+#[test]
+fn compact_fable_column_is_opt_in() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    assert!(theme.validate().is_empty(), "{:?}", theme.validate());
+    let children = &theme.surfaces[0].children;
+    let by_id = |id: &str| children.iter().find(|o| o.id == id).unwrap();
+    let render = &by_id("fable-provider").render.0;
+    assert!(render.contains("display.show_fable"), "{render}");
+    assert!(
+        theme.surfaces[0].width.0.contains("display.show_fable"),
+        "root width must not reserve the Fable column when hidden"
+    );
+
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+    // Simulate live data: Claude enabled AND a Fable quota present.
+    context.insert("providers.claude.enabled", 1.0);
+    context.insert("claude.model.fable.available", 1.0);
+    for show_fable in [0.0, 1.0] {
+        context.insert("display.show_fable", show_fable);
+        assert_eq!(evaluate(render, &context).unwrap(), show_fable, "{render}");
+    }
+}
+
+#[test]
 fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
     let theme: ThemeDocument =
         serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
@@ -4907,15 +4961,67 @@ fn compact_view_mode_widths_collapse_and_mode_one_is_exact() {
         "mode 3 must be at least 2x narrower than mode 1: {full}/{compact}"
     );
 
-    // The mechanical replacement onto display.* is only safe if mode 1 is
-    // byte-for-byte the old geometry: evaluate both expressions in one context.
+    // Mode 1 is byte-for-byte the accepted Stage 4 layout: the 10 px padding
+    // experiment (0275302) must NOT apply to the full or compact modes.
     let original = "providers.count * (ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * 28 + providers.cursor.enabled * 18 + providers.claude.enabled * claude.model.fable.available * 96 + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12";
     let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime(0.0, 1));
     assert_eq!(
         evaluate(&theme.surfaces[0].width.0, &context).unwrap(),
-        evaluate(original, &context).unwrap(),
-        "mode 1 geometry drifted from the accepted Stage 4 layout"
+        evaluate(original, &context).unwrap() + 4.0,
+        "mode 1 content drifted from the accepted Stage 4 layout"
     );
+}
+
+/// Only the bars-only mode needs a little extra room before the pinned tray
+/// chevron. Modes 1 and 3 keep their exact geometry; mode 2 gains 6 px.
+#[test]
+fn compact_all_modes_share_one_trailing_gap() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    assert!(theme.validate().is_empty(), "{:?}", theme.validate());
+    let children = &theme.surfaces[0].children;
+    let by_id = |id: &str| children.iter().find(|o| o.id == id).unwrap();
+
+    // No per-widget padding and no mode-dependent addition: one constant
+    // 4 px gap lives on the surface itself.
+    let root = &theme.surfaces[0].width.0;
+    assert!(root.ends_with(" + 4"), "{root}");
+    assert!(!root.contains("6 * display.mode_text_progress"));
+    let row = by_id("provider-row");
+    assert_eq!(row.x.0, "0");
+    assert_eq!(row.width.0, "canvas.width");
+    for object in children.iter().filter(|o| o.id.ends_with("-provider")) {
+        assert!(
+            !object
+                .width
+                .0
+                .contains("4 * (1 - display.mode_bar_progress)"),
+            "{} keeps a mode-dependent internal gap",
+            object.id
+        );
+    }
+
+    // Trailing empty column = surface width - (enabled providers + gaps).
+    for phase in [0.0_f64, 0.5, 1.0, 1.5, 2.0] {
+        let runtime = ThemeRuntime::default().with_mode_phase(phase);
+        let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime);
+        let surface_width = evaluate(root, &context).unwrap();
+        let mut content = 0.0_f64;
+        let mut enabled = 0_usize;
+        for object in children.iter().filter(|o| o.id.ends_with("-provider")) {
+            if evaluate(&object.render.0, &context).unwrap_or(0.0) == 0.0 {
+                continue;
+            }
+            content += evaluate(&object.width.0, &context).unwrap();
+            enabled += 1;
+        }
+        content += enabled.saturating_sub(1) as f64 * 6.0;
+        assert!(
+            (surface_width - content - 4.0).abs() < 1e-6,
+            "phase {phase}: trailing gap is {} instead of 4",
+            surface_width - content
+        );
+    }
 }
 
 /// Every value label now has a compact `%` twin. The twins use the existing

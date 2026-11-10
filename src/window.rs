@@ -163,6 +163,7 @@ struct AppState {
     usage_countdown: bool,
     use_windows_default_font: bool,
     show_pace: bool,
+    show_fable: bool,
     active_theme_path: Option<PathBuf>,
     active_theme: Option<ThemeDocument>,
     theme_clock_interval: Option<Duration>,
@@ -282,6 +283,7 @@ const IDM_FREQ_1HOUR: u16 = 13;
 const IDM_START_WITH_WINDOWS: u16 = 20;
 const IDM_LOCK_TASKBAR: u16 = 21;
 const IDM_SHOW_PACE: u16 = 22;
+const IDM_SHOW_FABLE: u16 = 23;
 const IDM_VERSION_ACTION: u16 = 31;
 const IDM_LANG_SYSTEM: u16 = 100;
 const IDM_LANG_FIRST: u16 = 101;
@@ -873,6 +875,7 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         .with_countdown(state.usage_countdown)
         .with_windows_default_font(state.use_windows_default_font)
         .with_show_pace(state.show_pace)
+        .with_show_fable(state.show_fable)
         .with_view_mode(state.view_mode)
         .with_mode_phase(state.mode_phase)
         .with_opencode_state(state.opencode_crossfade_opacity)
@@ -1126,6 +1129,7 @@ fn save_state_settings() {
         persisted.show_antigravity_external = Some(antigravity_on && s.show_antigravity_external);
         persisted.custom_theme_enabled = s.custom_theme_enabled;
         persisted.show_pace = s.show_pace;
+        persisted.show_fable = s.show_fable;
         persisted.view_mode = s.view_mode;
         persisted.active_theme_path = s
             .active_theme_path
@@ -2750,6 +2754,7 @@ pub fn run() {
                 usage_countdown: settings.usage_countdown,
                 use_windows_default_font: settings.use_windows_default_font,
                 show_pace: settings.show_pace,
+                show_fable: settings.show_fable,
                 active_theme_path,
                 active_theme,
                 theme_clock_interval,
@@ -3714,6 +3719,16 @@ pub(super) fn mode_phase_animation(current: f64, mode: u8) -> PhaseAnimation {
 /// Install a new view mode into the single global state, persist it and drive
 /// it with the shared animation timer. Every surface reads the same state, so
 /// one input switches all active widgets at the same phase.
+/// The four provider hit-test rects are cached in logical canvas coordinates.
+/// A view-mode change shrinks that canvas, so the cache belongs to the old
+/// layout and must be rebuilt by the next render.
+fn invalidate_hover_tile_rects(state: &mut AppState) {
+    state.antigravity_tile_rect = None;
+    state.claude_tile_rect = None;
+    state.codex_tile_rect = None;
+    state.opencode_tile_rect = None;
+}
+
 pub(super) fn apply_view_mode(hwnd: HWND, mode: u8, direction: i8) {
     {
         let mut state = lock_state();
@@ -3724,7 +3739,11 @@ pub(super) fn apply_view_mode(hwnd: HWND, mode: u8, direction: i8) {
         state.view_mode = mode;
         state.mode_direction = direction;
         state.mode_animation = Some(mode_phase_animation(state.mode_phase, mode));
+        invalidate_hover_tile_rects(state);
     }
+    // The first real WM_MOUSEMOVE after the transition must not be swallowed
+    // by the 8 ms duplicate-move coalescer.
+    mouse::reset_mouse_move_throttle();
     save_state_settings();
     ensure_crossfade_timer(hwnd);
     render_layered_animation();
@@ -3744,13 +3763,14 @@ pub(super) fn ensure_crossfade_timer(hwnd: HWND) {
 /// per tick instead of one per slot; the slot values are identical to the
 /// three separate tick functions this replaces.
 pub(super) fn tick_animations(hwnd: HWND, throttle: bool) {
-    let (should_render, still_animating) = {
+    let (should_render, still_animating, mode_finished) = {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {
             return;
         };
         let mut render = false;
         let mut active = false;
+        let mode_was_active = state.mode_animation.is_some();
         for (slot, value) in [
             (&mut state.crossfade_animation, &mut state.crossfade_opacity),
             (
@@ -3771,13 +3791,29 @@ pub(super) fn tick_animations(hwnd: HWND, throttle: bool) {
             render |= changed;
             active |= more;
         }
-        (render, active)
+        (
+            render,
+            active,
+            mode_was_active && state.mode_animation.is_none(),
+        )
     };
     if !still_animating {
         stop_crossfade_timer_if_idle(hwnd);
     }
+    if mode_finished {
+        // The provider hit-test rects were built for the previous width. Drop
+        // them so the settle render below rebuilds them, then re-evaluate
+        // hover: a shrinking, right-pinned window never receives a synthetic
+        // WM_MOUSELEAVE for a cursor it moved out from under.
+        if let Some(state) = lock_state().as_mut() {
+            invalidate_hover_tile_rects(state);
+        }
+    }
     if should_render {
         render_layered_animation();
+    }
+    if mode_finished {
+        mouse::revalidate_mouse_hover(hwnd);
     }
 }
 
@@ -3919,6 +3955,7 @@ fn reload_external_settings(hwnd: HWND) {
         state.usage_countdown = settings.usage_countdown;
         state.use_windows_default_font = settings.use_windows_default_font;
         state.show_pace = settings.show_pace;
+        state.show_fable = settings.show_fable;
         // An external settings reload replaces the transient view state too.
         state.view_mode = settings.view_mode;
         state.mode_phase = (f64::from(settings.view_mode) - 1.0).clamp(0.0, 2.0);
@@ -4795,8 +4832,8 @@ mod credential_watch_worker_tests {
 #[cfg(test)]
 mod phase_animation_tests {
     use super::{
-        interpolate_phase, mode_phase_animation, next_view_mode, wheel_view_mode, AppState, Easing,
-        PhaseAnimation,
+        interpolate_phase, invalidate_hover_tile_rects, mode_phase_animation, next_view_mode,
+        wheel_view_mode, AppState, Easing, PhaseAnimation,
     };
     use std::time::Duration;
 
@@ -4924,6 +4961,26 @@ mod phase_animation_tests {
             set_slot(&mut state, index, None);
             assert!(!state.is_any_animation_active(), "slot {index}");
         }
+    }
+
+    #[test]
+    fn view_mode_change_invalidates_cached_hover_tiles() {
+        use super::placement_regression_tests::{placement, state_for};
+        use crate::theme_engine::ThemeDocument;
+
+        let mut state = state_for(ThemeDocument::starter(), placement("taskbar"));
+        state.antigravity_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+        state.claude_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+        state.codex_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+        state.opencode_tile_rect = Some((1.0, 2.0, 3.0, 4.0));
+        assert!(state.claude_tile_rect.is_some());
+
+        invalidate_hover_tile_rects(&mut state);
+
+        assert!(state.antigravity_tile_rect.is_none());
+        assert!(state.claude_tile_rect.is_none());
+        assert!(state.codex_tile_rect.is_none());
+        assert!(state.opencode_tile_rect.is_none());
     }
 
     #[test]

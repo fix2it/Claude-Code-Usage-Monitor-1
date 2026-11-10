@@ -41,6 +41,18 @@ pub(super) unsafe extern "system" fn wnd_proc(
             LRESULT(0)
         }
         WM_NCHITTEST => LRESULT(HTCLIENT as isize),
+        // Remember where a provider submenu actually opened so the multi-select
+        // loop can re-show it in place instead of jumping to the root position.
+        // WM_MENUSELECT gives the submenu's real rect (left- or right-opening),
+        // WM_INITMENUPOPUP is the fallback before its window exists.
+        WM_MENUSELECT => {
+            window_context_menu::note_menu_select(wparam, lparam);
+            DefWindowProcW(hwnd, msg, wparam, lparam)
+        }
+        WM_INITMENUPOPUP => {
+            window_context_menu::note_menu_popup(hwnd, wparam, lparam);
+            DefWindowProcW(hwnd, msg, wparam, lparam)
+        }
         // DefWindowProc sends WM_MOUSEACTIVATE to a child's parent first. For a
         // taskbar-hosted surface that is a synchronous call into Shell_TrayWnd
         // on every button press; a hang dump caught Explorer's taskbar thread
@@ -805,6 +817,17 @@ pub(super) unsafe extern "system" fn wnd_proc(
                         let mut state = lock_state();
                         if let Some(s) = state.as_mut() {
                             s.show_pace = !s.show_pace;
+                        }
+                    }
+                    save_state_settings();
+                    render_layered();
+                    sync_tray_icon(hwnd);
+                }
+                IDM_SHOW_FABLE => {
+                    {
+                        let mut state = lock_state();
+                        if let Some(s) = state.as_mut() {
+                            s.show_fable = !s.show_fable;
                         }
                     }
                     save_state_settings();

@@ -1,10 +1,148 @@
 use super::*;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicIsize, Ordering};
+
+/// Sentinel for "no submenu anchor captured yet".
+const NO_ANCHOR: i64 = i64::MIN;
+/// The root HMENU of the menu currently on screen, and the screen position of
+/// the last opened submenu. Both are owned by the menu session on this UI
+/// thread only; the handles are cleared before `DestroyMenu`.
+static ROOT_MENU_HANDLE: AtomicIsize = AtomicIsize::new(0);
+static SUBMENU_ANCHOR: AtomicI64 = AtomicI64::new(NO_ANCHOR);
+static CAPTURE_SUBMENU_ANCHOR: AtomicBool = AtomicBool::new(false);
+
+fn submenu_anchor() -> Option<(i32, i32)> {
+    let packed = SUBMENU_ANCHOR.load(Ordering::Relaxed);
+    (packed != NO_ANCHOR).then(|| ((packed >> 32) as i32, packed as i32))
+}
+
+fn store_anchor(rect: &RECT) {
+    let packed = ((rect.left as i64) << 32) | (rect.top as i64 & 0xFFFF_FFFF);
+    SUBMENU_ANCHOR.store(packed, Ordering::Relaxed);
+}
+
+/// Called from `WM_MENUSELECT` while a menu is on screen. `lParam` is the HMENU
+/// that owns the highlighted item; when it is a submenu we can query that
+/// submenu's own item rects. This gives the REAL screen position of the
+/// submenu, whether Win32 opened it to the right or flipped it to the left
+/// near the screen edge. Using the parent row's right edge (the old approach)
+/// was wrong for the flipped case and made the re-opened menu jump right.
+pub(super) unsafe fn note_menu_select(wparam: WPARAM, lparam: LPARAM) {
+    if !CAPTURE_SUBMENU_ANCHOR.load(Ordering::Relaxed) {
+        return;
+    }
+    let root = ROOT_MENU_HANDLE.load(Ordering::Relaxed);
+    if root == 0 {
+        return;
+    }
+    // HIWORD == 0xFFFF means the menu is closing / nothing is selected.
+    if (wparam.0 >> 16) & 0xFFFF == 0xFFFF {
+        return;
+    }
+    let menu = HMENU(lparam.0 as *mut _);
+    if menu.is_invalid() || menu.0 as isize == root {
+        return; // highlighted item belongs to the root menu, not a submenu
+    }
+    let index = (wparam.0 as u32) & 0xFFFF;
+    let mut rect = RECT::default();
+    // Item 0 is the submenu's top-left content row; fall back to the
+    // highlighted item's own rect if the first row cannot be measured.
+    if GetMenuItemRect(None, menu, 0, &mut rect).is_ok()
+        || GetMenuItemRect(None, menu, index, &mut rect).is_ok()
+    {
+        store_anchor(&rect);
+    }
+}
+
+/// Fallback for `WM_INITMENUPOPUP`: the submenu window may not exist yet, but
+/// the root menu is on screen, so its parent row rect is queryable. This only
+/// approximates the right-opening case; `note_menu_select` overwrites it with
+/// the exact position as soon as an item inside the submenu is highlighted.
+pub(super) unsafe fn note_menu_popup(hwnd: HWND, wparam: WPARAM, lparam: LPARAM) {
+    if !CAPTURE_SUBMENU_ANCHOR.load(Ordering::Relaxed) {
+        return;
+    }
+    let root = ROOT_MENU_HANDLE.load(Ordering::Relaxed);
+    if root == 0 || wparam.0 as isize == root {
+        return; // the root popup itself, or no active menu session
+    }
+    if SUBMENU_ANCHOR.load(Ordering::Relaxed) != NO_ANCHOR {
+        return; // an exact position was already captured
+    }
+    let parent_index = (lparam.0 as u32) & 0xFFFF;
+    let root_menu = HMENU(root as *mut _);
+    let mut rect = RECT::default();
+    // Popup-menu item rects are queryable with the owner HWND on some Windows
+    // builds and only with NULL on others; the repo's VM harness uses NULL.
+    let found = GetMenuItemRect(Some(hwnd), root_menu, parent_index, &mut rect).is_ok()
+        || GetMenuItemRect(None, root_menu, parent_index, &mut rect).is_ok();
+    if found {
+        store_anchor(&rect);
+    }
+}
+
+/// A native `TrackPopupMenu` always dismisses after one command. To allow
+/// several provider toggles in one session we re-open the menu at the same
+/// point until Escape, an outside click, or a non-toggle action. The flag also
+/// stops a second right-click from nesting another modal menu loop.
+static MENU_SESSION_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+struct MenuSessionGuard;
+impl Drop for MenuSessionGuard {
+    fn drop(&mut self) {
+        CAPTURE_SUBMENU_ANCHOR.store(false, Ordering::Relaxed);
+        SUBMENU_ANCHOR.store(NO_ANCHOR, Ordering::Relaxed);
+        ROOT_MENU_HANDLE.store(0, Ordering::Relaxed);
+        MENU_SESSION_ACTIVE.store(false, Ordering::Release);
+    }
+}
+
+/// Provider rows are checkboxes: they may be applied repeatedly in one menu
+/// session. Every other action keeps the original one-shot behaviour.
+fn is_provider_toggle(action: &ContextMenuAction) -> bool {
+    matches!(
+        action,
+        ContextMenuAction::ToggleProvider { .. }
+            | ContextMenuAction::ToggleAntigravityGemini
+            | ContextMenuAction::ToggleAntigravityExternal
+            | ContextMenuAction::ToggleClaudeMain
+            | ContextMenuAction::ToggleClaudeX
+            | ContextMenuAction::ToggleCodexMain
+            | ContextMenuAction::ToggleCodexX
+    )
+}
+
+/// Find the menu (root or a nested popup) that owns a command id. Win32 allows
+/// `TrackPopupMenu` on a `GetSubMenu` handle, so the Providers submenu can be
+/// re-opened directly instead of collapsing back to the root menu.
+unsafe fn menu_for_command(menu: HMENU, command: u32) -> Option<HMENU> {
+    let count = GetMenuItemCount(Some(menu)).max(0);
+    for index in 0..count {
+        if GetMenuItemID(menu, index) == command {
+            return Some(menu);
+        }
+        let submenu = GetSubMenu(menu, index);
+        if !submenu.is_invalid() {
+            if let Some(found) = menu_for_command(submenu, command) {
+                return Some(found);
+            }
+        }
+    }
+    None
+}
 
 pub(super) fn show_context_menu_document(
     hwnd: HWND,
     reference: Option<&str>,
     origin: Option<(usize, String)>,
 ) {
+    if MENU_SESSION_ACTIVE
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return;
+    }
+    let _guard = MenuSessionGuard;
+
     let document = match context_menu::resolve_context_menu(reference) {
         Ok(document) => document,
         Err(error) => {
@@ -16,38 +154,91 @@ pub(super) fn show_context_menu_document(
         .as_ref()
         .map(|state| state.language)
         .unwrap_or_else(localization::detect_system_language);
-    let data_context = context_menu_data_context(origin.as_ref());
-    let mut actions = Vec::new();
+    let mut point = POINT::default();
     unsafe {
-        let Ok(menu) = CreatePopupMenu() else {
-            return;
-        };
-        append_context_menu_items(
-            menu,
-            &document.items,
-            language,
-            &data_context,
-            origin.as_ref(),
-            &mut actions,
-        );
-        let mut point = POINT::default();
         let _ = GetCursorPos(&mut point);
-        let _ = SetForegroundWindow(hwnd);
-        let selected = TrackPopupMenu(
-            menu,
-            TPM_RIGHTBUTTON | TPM_RETURNCMD,
-            point.x,
-            point.y,
-            None,
-            hwnd,
-            None,
-        )
-        .0 as usize;
-        let _ = DestroyMenu(menu);
-        if selected >= 1_000 {
-            if let Some(action) = actions.get(selected - 1_000).cloned() {
-                execute_context_menu_action(hwnd, action, origin);
+    }
+    // Capture the real on-screen position of whichever submenu the user opens
+    // during this first (root) menu. Only round one has a visible root menu.
+    SUBMENU_ANCHOR.store(NO_ANCHOR, Ordering::Relaxed);
+    CAPTURE_SUBMENU_ANCHOR.store(true, Ordering::Relaxed);
+    // After a provider toggle, re-open the submenu that held the item so the
+    // provider list stays put for the next selection.
+    let mut reopen_submenu: Option<ContextMenuAction> = None;
+
+    loop {
+        // Rebuild every round: conditional rows and checkmarks must reflect
+        // the toggles applied so far.
+        let data_context = context_menu_data_context(origin.as_ref());
+        let mut actions = Vec::new();
+        unsafe {
+            let Ok(menu) = CreatePopupMenu() else {
+                break;
+            };
+            ROOT_MENU_HANDLE.store(menu.0 as isize, Ordering::Relaxed);
+            append_context_menu_items(
+                menu,
+                &document.items,
+                language,
+                &data_context,
+                origin.as_ref(),
+                &mut actions,
+            );
+            // Locate the same action again by identity (indices can shift if
+            // conditional rows changed), then show its containing popup.
+            let display_menu = reopen_submenu
+                .as_ref()
+                .and_then(|action| actions.iter().position(|candidate| candidate == action))
+                .map(|index| (1_000 + index) as u32)
+                .and_then(|id| menu_for_command(menu, id))
+                .unwrap_or(menu);
+            // Round one shows the root menu at the cursor; later rounds show
+            // the provider submenu at its own captured screen position.
+            let (menu_x, menu_y) = if reopen_submenu.is_some() {
+                submenu_anchor().unwrap_or((point.x, point.y))
+            } else {
+                (point.x, point.y)
+            };
+            let _ = SetForegroundWindow(hwnd);
+            let selected = TrackPopupMenu(
+                display_menu,
+                TPM_RIGHTBUTTON | TPM_RETURNCMD | TPM_NOANIMATION,
+                menu_x,
+                menu_y,
+                None,
+                hwnd,
+                None,
+            )
+            .0 as usize;
+            ROOT_MENU_HANDLE.store(0, Ordering::Relaxed);
+            let _ = DestroyMenu(menu);
+
+            // 0 = Escape or a click outside the menu: end the session.
+            if selected < 1_000 {
+                break;
             }
+            let Some(action) = actions.get(selected - 1_000).cloned() else {
+                break;
+            };
+            if is_provider_toggle(&action) {
+                // Apply synchronously. PostMessageW would dispatch after the
+                // next menu was built, so its checkmark would still be stale.
+                if let Some(command) = context_menu_static_command(&action) {
+                    let _ = SendMessageW(
+                        controller_for(hwnd),
+                        WM_COMMAND,
+                        Some(WPARAM(command as usize)),
+                        Some(LPARAM(0)),
+                    );
+                }
+                // The root menu is gone after this round; stop capturing so
+                // later WM_INITMENUPOPUP events cannot overwrite the anchor.
+                CAPTURE_SUBMENU_ANCHOR.store(false, Ordering::Relaxed);
+                reopen_submenu = Some(action);
+                continue;
+            }
+            execute_context_menu_action(hwnd, action, origin);
+            break;
         }
     }
 }
@@ -194,6 +385,7 @@ pub(super) fn context_menu_action_flags(
         ContextMenuAction::ToggleStartup => is_startup_enabled(),
         ContextMenuAction::ToggleTaskbarLock => state.lock_taskbar,
         ContextMenuAction::ToggleShowPace => state.show_pace,
+        ContextMenuAction::ToggleShowFable => state.show_fable,
         ContextMenuAction::ToggleWidget => state
             .active_theme
             .as_ref()
@@ -296,12 +488,10 @@ pub(super) fn context_menu_widget_origin(theme: &ThemeDocument) -> Option<(usize
         .map(|(index, surface)| (index, surface.id.clone()))
 }
 
-pub(super) fn execute_context_menu_action(
-    hwnd: HWND,
-    action: ContextMenuAction,
-    origin: Option<(usize, String)>,
-) {
-    let static_command = match &action {
+/// Map an action to the WM_COMMAND id handled by `wnd_proc`. Kept separate so
+/// the multi-select loop can dispatch a provider toggle synchronously.
+fn context_menu_static_command(action: &ContextMenuAction) -> Option<u16> {
+    match action {
         ContextMenuAction::OpenDashboard => Some(IDM_DASHBOARD),
         ContextMenuAction::Refresh => Some(1),
         ContextMenuAction::SetUpdateFrequency { seconds } => match *seconds {
@@ -323,6 +513,7 @@ pub(super) fn execute_context_menu_action(
         ContextMenuAction::ToggleStartup => Some(IDM_START_WITH_WINDOWS),
         ContextMenuAction::ToggleTaskbarLock => Some(IDM_LOCK_TASKBAR),
         ContextMenuAction::ToggleShowPace => Some(IDM_SHOW_PACE),
+        ContextMenuAction::ToggleShowFable => Some(IDM_SHOW_FABLE),
         ContextMenuAction::SetLanguage { language } => {
             if language.eq_ignore_ascii_case("system") {
                 Some(IDM_LANG_SYSTEM)
@@ -337,7 +528,15 @@ pub(super) fn execute_context_menu_action(
         | ContextMenuAction::ToggleLayerRender { .. }
         | ContextMenuAction::LayerActions { .. }
         | ContextMenuAction::OpenUrl { .. } => None,
-    };
+    }
+}
+
+pub(super) fn execute_context_menu_action(
+    hwnd: HWND,
+    action: ContextMenuAction,
+    origin: Option<(usize, String)>,
+) {
+    let static_command = context_menu_static_command(&action);
     if let Some(command) = static_command {
         unsafe {
             let _ = PostMessageW(
@@ -385,6 +584,90 @@ pub(super) fn execute_context_menu_action(
 mod tests {
     use super::*;
     use windows::Win32::UI::WindowsAndMessaging::{GetMenuItemCount, GetMenuItemID, GetSubMenu};
+
+    #[test]
+    fn provider_toggles_are_repeatable_but_other_actions_close_the_menu() {
+        use crate::providers::ProviderId;
+
+        let repeatable = [
+            ContextMenuAction::ToggleProvider {
+                provider: ProviderId::OpenCode,
+            },
+            ContextMenuAction::ToggleProvider {
+                provider: ProviderId::Grok,
+            },
+            ContextMenuAction::ToggleAntigravityGemini,
+            ContextMenuAction::ToggleAntigravityExternal,
+            ContextMenuAction::ToggleClaudeMain,
+            ContextMenuAction::ToggleClaudeX,
+            ContextMenuAction::ToggleCodexMain,
+            ContextMenuAction::ToggleCodexX,
+        ];
+        for action in &repeatable {
+            assert!(is_provider_toggle(action), "{action:?}");
+            assert!(
+                context_menu_static_command(action).is_some(),
+                "{action:?} needs a synchronous WM_COMMAND id"
+            );
+        }
+        assert_eq!(
+            context_menu_static_command(&ContextMenuAction::ToggleShowFable),
+            Some(super::IDM_SHOW_FABLE)
+        );
+        for action in [
+            ContextMenuAction::Refresh,
+            ContextMenuAction::Exit,
+            ContextMenuAction::OpenDashboard,
+            ContextMenuAction::ToggleShowPace,
+            ContextMenuAction::ToggleShowFable,
+            ContextMenuAction::ToggleStartup,
+            ContextMenuAction::ToggleTaskbarLock,
+            ContextMenuAction::CheckForUpdates,
+        ] {
+            assert!(!is_provider_toggle(&action), "{action:?}");
+        }
+    }
+
+    #[test]
+    fn menu_for_command_finds_nested_provider_submenus() {
+        let mut conditional = vec![
+            ContextMenuItem::action("root", "Refresh", ContextMenuAction::Refresh),
+            ContextMenuItem::submenu(
+                "providers",
+                "Providers",
+                vec![ContextMenuItem::action(
+                    "nested",
+                    "Exit",
+                    ContextMenuAction::Exit,
+                )],
+            ),
+            ContextMenuItem::action("last", "Exit", ContextMenuAction::Exit),
+        ];
+        for item in &mut conditional {
+            item.render = theme_engine::Expression("1".into());
+        }
+        let context = DataContext::from_usage(None, &Canvas::default());
+        let mut actions = Vec::new();
+        unsafe {
+            let menu = CreatePopupMenu().unwrap();
+            append_context_menu_items(
+                menu,
+                &conditional,
+                localization::detect_system_language(),
+                &context,
+                None,
+                &mut actions,
+            );
+            let submenu = GetSubMenu(menu, 1);
+            assert!(!submenu.is_invalid());
+            // root action 1000, nested 1001, last 1002.
+            assert_eq!(menu_for_command(menu, 1000).map(|m| m.0), Some(menu.0));
+            assert_eq!(menu_for_command(menu, 1001).map(|m| m.0), Some(submenu.0));
+            assert_eq!(menu_for_command(menu, 1002).map(|m| m.0), Some(menu.0));
+            assert!(menu_for_command(menu, 9999).is_none());
+            DestroyMenu(menu).unwrap();
+        }
+    }
 
     #[test]
     fn conditional_native_rows_and_subtrees_preserve_action_ids_on_each_open() {

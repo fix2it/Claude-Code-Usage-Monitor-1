@@ -337,6 +337,26 @@ fn cursor_over_widget(hwnd: HWND) -> bool {
     mouse_target_at(hwnd, lparam).is_some()
 }
 
+/// A view-mode transition keeps the widget's right screen edge pinned and
+/// moves its left edge, so a stationary cursor can end up outside the window.
+/// Win32 does not post `WM_MOUSELEAVE` when the window itself moves away, which
+/// would leave the tooltip anchor and the four hover crossfades frozen until
+/// the next physical mouse move. Re-evaluate hover against the settled
+/// geometry: tear the stale state down when the cursor left, or re-arm
+/// tracking and recompute the provider hover when it stayed over the widget.
+pub(super) fn revalidate_mouse_hover(hwnd: HWND) {
+    reset_mouse_move_throttle();
+    let Some(lparam) = cursor_client_lparam(hwnd) else {
+        clear_mouse_hover(hwnd);
+        return;
+    };
+    if mouse_target_at(hwnd, lparam).is_some() {
+        update_mouse_hover(hwnd, lparam);
+    } else {
+        clear_mouse_hover(hwnd);
+    }
+}
+
 /// Theme object whose hover reveals the Antigravity Claude/GPT pool.
 pub(super) const ANTIGRAVITY_HOVER_OBJECT: &str = "antigravity-provider";
 pub(super) const CLAUDE_HOVER_OBJECT: &str = "claude-provider";

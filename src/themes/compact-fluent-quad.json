@@ -21,7 +21,7 @@
         "offset_x": 6,
         "offset_y": 0
       },
-      "width": "providers.count * (display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * (display.text_width_wide - display.text_width) + providers.cursor.enabled * 18 * (1 - display.mode_text_progress) + providers.claude.enabled * claude.model.fable.available * (6 + 90 * (1 - display.mode_text_progress) + (floor((90 + 1) / 11) * 11 - 1) * display.mode_text_progress * (1 - display.mode_bar_progress) + 30 * display.mode_bar_progress) + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12",
+      "width": "providers.count * (display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * (display.text_width_wide - display.text_width) + providers.cursor.enabled * 18 * (1 - display.mode_text_progress) + providers.claude.enabled * claude.model.fable.available * display.show_fable * (6 + 90 * (1 - display.mode_text_progress) + (floor((90 + 1) / 11) * 11 - 1) * display.mode_text_progress * (1 - display.mode_bar_progress) + 30 * display.mode_bar_progress) + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12 + 4",
       "height": "46",
       "background": {
         "type": "none"
@@ -44,7 +44,7 @@
           "render": "providers.cursor.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + 80 * (1 - display.mode_text_progress) + 30 * display.mode_bar_progress",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + 80 * (1 - display.mode_text_progress) + 30 * display.mode_bar_progress",
           "height": "46",
           "background": {
             "type": "none"
@@ -356,7 +356,7 @@
           "render": "providers.claude.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress + (claude.dual_mode * 12)",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress + (claude.dual_mode * 12)",
           "height": "46",
           "background": {
             "type": "none"
@@ -749,7 +749,7 @@
         {
           "id": "fable-provider",
           "name": "Fable weekly meter",
-          "render": "providers.claude.enabled && claude.model.fable.available",
+          "render": "providers.claude.enabled && claude.model.fable.available && display.show_fable",
           "visibility": "100",
           "parent": "provider-row",
           "width": "(90 * (1 - display.mode_text_progress) + (floor((90 + 1) / 11) * 11 - 1) * display.mode_text_progress * (1 - display.mode_bar_progress) + 30 * display.mode_bar_progress)",
@@ -906,7 +906,7 @@
           "render": "providers.codex.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress + (codex.dual_mode * 12)",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress + (codex.dual_mode * 12)",
           "height": "46",
           "background": {
             "type": "none"
@@ -1302,7 +1302,7 @@
           "render": "providers.antigravity.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress",
           "height": "46",
           "background": {
             "type": "none"
@@ -3266,7 +3266,7 @@
           "render": "providers.opencode.enabled",
           "visibility": "100",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width_wide + 30 * display.mode_bar_progress",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width_wide + 30 * display.mode_bar_progress",
           "height": "46",
           "background": {
             "type": "none"
@@ -6869,7 +6869,7 @@
           "name": "Grok provider",
           "render": "providers.grok.enabled",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress",
           "height": "46"
         },
         {
@@ -7149,7 +7149,7 @@
           "name": "Copilot provider",
           "render": "providers.copilot.enabled",
           "parent": "provider-row",
-          "width": "display.bar_width + 4 * (1 - display.mode_bar_progress) + display.text_width + 30 * display.mode_bar_progress",
+          "width": "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress",
           "height": "46"
         },
         {
