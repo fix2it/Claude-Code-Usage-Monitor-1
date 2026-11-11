@@ -527,7 +527,7 @@ pub(super) fn format_usage_line(base: &str, context: &DataContext) -> Option<Str
         || (dynamic.is_none()
             && !matches!(
                 window,
-                "session" | "five_hour" | "weekly" | "monthly" | "credits"
+                "session" | "five_hour" | "week" | "weekly" | "monthly" | "credits"
             ))
     {
         return None;
@@ -565,9 +565,9 @@ pub(super) fn format_usage_line(base: &str, context: &DataContext) -> Option<Str
     if dynamic.is_some() && context.get(&format!("{base}.available")) == Some(0.0) {
         return Some("--".into());
     }
-    // An Antigravity pool may report one window but not the other; an absent
+    // An Antigravity or OpenCode pool may report one window but not the other; an absent
     // window is "no limit data", not 0% used.
-    if provider.starts_with("antigravity")
+    if (provider.starts_with("antigravity") || provider == "opencode")
         && context.get(&format!("{provider}.{window}.available")) == Some(0.0)
     {
         return Some("--".into());

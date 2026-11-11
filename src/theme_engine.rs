@@ -1872,6 +1872,7 @@ impl DataContext {
             "codex.dual_mode",
             (runtime.codex_main_enabled && runtime.codex_x_enabled) as u8 as f64,
         );
+        context.insert_hover_crossfade("opencode", runtime.opencode_crossfade_opacity);
         if let Some(data) = data {
             for account in &data.accounts {
                 let key = format!(
@@ -2154,11 +2155,16 @@ impl DataContext {
         self.insert_string(&format!("{name}.week.label"), "7d");
         self.insert(
             &format!("{name}.week.available"),
-            week.is_some_and(|week| week.available) as u8 as f64,
+            week.is_some() as u8 as f64,
         );
         self.insert(&format!("{name}.week.percentage"), week_percentage);
         self.insert(&format!("{name}.week.remaining"), 100.0 - week_percentage);
-        self.insert(&format!("{name}.week.display"), display(week_percentage));
+        let shown_week = if name == "opencode" && week.is_none() {
+            0.0
+        } else {
+            display(week_percentage)
+        };
+        self.insert(&format!("{name}.week.display"), shown_week);
         let week_expected = week
             .filter(|week| week.available)
             .and_then(|week| expected_used(week.resets_at?, WEEK));
@@ -2173,22 +2179,19 @@ impl DataContext {
             display(week_expected),
         );
         let monthly = usage.and_then(|usage| usage.monthly.as_ref());
+        let monthly_percentage = monthly.map(|m| m.percentage).unwrap_or(0.0);
         self.insert_string(&format!("{name}.monthly.label"), "30d");
-        if let Some(monthly) = monthly {
-            self.insert(&format!("{name}.monthly.percentage"), monthly.percentage);
-            self.insert(
-                &format!("{name}.monthly.remaining"),
-                100.0 - monthly.percentage,
-            );
-            self.insert(
-                &format!("{name}.monthly.display"),
-                display(monthly.percentage),
-            );
+        self.insert(&format!("{name}.monthly.percentage"), monthly_percentage);
+        self.insert(
+            &format!("{name}.monthly.remaining"),
+            100.0 - monthly_percentage,
+        );
+        let shown_monthly = if name == "opencode" && monthly.is_none() {
+            0.0
         } else {
-            self.insert(&format!("{name}.monthly.percentage"), 0.0);
-            self.insert(&format!("{name}.monthly.remaining"), 100.0);
-            self.insert(&format!("{name}.monthly.display"), display(0.0));
-        }
+            display(monthly_percentage)
+        };
+        self.insert(&format!("{name}.monthly.display"), shown_monthly);
         self.insert(
             &format!("{name}.monthly.available"),
             monthly.is_some() as u8 as f64,

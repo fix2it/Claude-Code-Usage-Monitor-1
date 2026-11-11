@@ -2474,6 +2474,8 @@ fn compact_fluent_quad_widget_respects_usage_direction() {
             UsageData {
                 session: section.clone(),
                 weekly: section.clone(),
+                week: Some(section.clone()),
+                monthly: Some(section.clone()),
                 limits: (provider == ProviderId::Claude)
                     .then(|| UsageLimit {
                         key: "weekly_scoped_fable".into(),
@@ -4290,7 +4292,7 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
         .enumerate()
         .filter(|(_, object)| object.id.ends_with("-pace"))
         .collect::<Vec<_>>();
-    assert_eq!(ticks.len(), 64);
+    assert_eq!(ticks.len(), 70);
     for (index, tick) in ticks {
         let gauge = &children[index - 1];
         assert_eq!(tick.id, format!("{}-pace", gauge.id));
@@ -4544,7 +4546,7 @@ fn compact_markers_are_centered_and_clear_of_the_gauges() {
         .iter()
         .filter(|o| o.id.contains("-marker-"))
         .collect::<Vec<_>>();
-    assert_eq!(markers.len(), 16);
+    assert_eq!(markers.len(), 20);
     let boxes = markers
         .iter()
         .map(|o| (o.x.0.clone(), o.width.0.clone()))
@@ -4560,7 +4562,11 @@ fn compact_markers_are_centered_and_clear_of_the_gauges() {
                 align, template, ..
             } => {
                 assert_eq!(*align, TextAlign::Center, "{}", marker.id);
-                assert!(matches!(template.as_str(), "o" | "x"), "{}", marker.id);
+                assert!(
+                    matches!(template.as_str(), "o" | "x" | "w" | "m"),
+                    "{}",
+                    marker.id
+                );
             }
             other => panic!("{} is not text: {other:?}", marker.id),
         }
@@ -4572,7 +4578,10 @@ fn compact_markers_are_centered_and_clear_of_the_gauges() {
             _ => unreachable!(),
         })
         .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(templates, std::collections::BTreeSet::from(["o", "x"]));
+    assert_eq!(
+        templates,
+        std::collections::BTreeSet::from(["m", "o", "w", "x"])
+    );
 
     // Claude/Codex gauges start at x = 12, so the marker box ending at x = 9
     // leaves a 3 px structural gap (glyph ink is centred inside the box).
@@ -4602,7 +4611,7 @@ fn compact_pace_ticks_follow_morphing_gauges_at_every_hover_phase() {
         .enumerate()
         .filter(|(_, object)| object.id.ends_with("-pace"))
         .collect::<Vec<_>>();
-    assert_eq!(ticks.len(), 64);
+    assert_eq!(ticks.len(), 70);
     let mut context = DataContext::from_usage(None, &Canvas::default());
     for opacity in [
         "antigravity.gemini.opacity",
@@ -4794,6 +4803,7 @@ fn render_hover_previews() {
             UsageData {
                 session: section(12.0),
                 weekly: section(45.0),
+                week: Some(section(45.0)),
                 monthly: Some(section(60.0)),
                 ..Default::default()
             },
@@ -4877,6 +4887,7 @@ fn render_frame_benchmark() {
             UsageData {
                 session: section(12.0),
                 weekly: section(45.0),
+                week: Some(section(45.0)),
                 monthly: Some(section(60.0)),
                 ..Default::default()
             },
@@ -4963,7 +4974,7 @@ fn compact_view_mode_widths_collapse_and_mode_one_is_exact() {
 
     // Mode 1 is byte-for-byte the accepted Stage 4 layout: the 10 px padding
     // experiment (0275302) must NOT apply to the full or compact modes.
-    let original = "providers.count * (ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62) + max(0, providers.count - 1) * 6 + providers.opencode.enabled * 28 + providers.cursor.enabled * 18 + providers.claude.enabled * claude.model.fable.available * 96 + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12";
+    let original = "providers.count * (ceil(10 / max(1, providers.count)) * 11 - 1 + 4 + 62) + max(0, providers.count - 1) * 6 + providers.cursor.enabled * 18 + providers.claude.enabled * claude.model.fable.available * 96 + providers.codex.enabled * codex.dual_mode * 12 + providers.claude.enabled * claude.dual_mode * 12 + providers.opencode.enabled * 12";
     let context = DataContext::from_usage_with_runtime(None, &Canvas::default(), runtime(0.0, 1));
     assert_eq!(
         evaluate(&theme.surfaces[0].width.0, &context).unwrap(),
@@ -5069,7 +5080,7 @@ fn compact_percent_twins_crossfade_values_on_hover_in_every_mode() {
             other => panic!("{} is not text: {other:?}", twin.id),
         }
     }
-    assert_eq!(twins, 60);
+    assert_eq!(twins, 62);
 
     // A dual-mode row: mode controls appearance, hover controls the value.
     let normal = by_id("claude-main-text-dark-normal-pct");
@@ -5207,6 +5218,7 @@ fn render_view_mode_previews() {
             UsageData {
                 session: section(12.0),
                 weekly: section(45.0),
+                week: Some(section(45.0)),
                 monthly: Some(section(60.0)),
                 ..Default::default()
             },
@@ -5265,4 +5277,175 @@ fn render_view_mode_previews() {
         }
     }
     println!("mode previews in {}", out.display());
+}
+
+#[test]
+fn opencode_has_three_gauges_with_row_two_divided_into_two_horizontal_sub_bars() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let session_gauge = children
+        .iter()
+        .find(|o| o.id == "opencode-session-segments-dark")
+        .unwrap();
+    let week_gauge = children
+        .iter()
+        .find(|o| o.id == "opencode-week-segments-dark")
+        .unwrap();
+    let monthly_gauge = children
+        .iter()
+        .find(|o| o.id == "opencode-monthly-segments-dark")
+        .unwrap();
+
+    assert_eq!(session_gauge.y.0, "10");
+    assert_eq!(week_gauge.y.0, "27");
+    assert_eq!(monthly_gauge.y.0, "35 - 3 * opencode.hover_phase");
+    assert_eq!(session_gauge.width.0, "display.bar_width");
+    assert_eq!(week_gauge.width.0, "display.bar_width");
+    assert_eq!(monthly_gauge.width.0, "display.bar_width");
+    assert_eq!(session_gauge.height.0, "9");
+    assert_eq!(week_gauge.height.0, "6 - 3 * opencode.hover_phase");
+    assert_eq!(monthly_gauge.height.0, "3 + 3 * opencode.hover_phase");
+
+    // All three gauges have pace ticks immediately following them.
+    let session_pace = children
+        .iter()
+        .find(|o| o.id == "opencode-session-segments-dark-pace")
+        .unwrap();
+    let week_pace = children
+        .iter()
+        .find(|o| o.id == "opencode-week-segments-dark-pace")
+        .unwrap();
+    let monthly_pace = children
+        .iter()
+        .find(|o| o.id == "opencode-monthly-segments-dark-pace")
+        .unwrap();
+    assert_eq!(session_pace.y.0, "9");
+    assert_eq!(week_pace.y.0, "26");
+    assert_eq!(monthly_pace.y.0, "34 - 3 * opencode.hover_phase");
+    assert_eq!(session_pace.width.0, "1");
+    assert_eq!(week_pace.width.0, "1");
+    assert_eq!(monthly_pace.width.0, "1");
+
+    // Row 2 markers w and m.
+    let marker_w = children
+        .iter()
+        .find(|o| o.id == "opencode-week-marker-dark-normal")
+        .unwrap();
+    let marker_m = children
+        .iter()
+        .find(|o| o.id == "opencode-monthly-marker-dark-hover")
+        .unwrap();
+    assert_eq!(marker_w.x.0, "0");
+    assert_eq!(marker_m.x.0, "0");
+    assert_eq!(marker_w.y.0, "25");
+    assert_eq!(marker_m.y.0, "25");
+    assert_eq!(marker_w.width.0, "10");
+    assert_eq!(marker_m.width.0, "10");
+}
+
+#[test]
+fn opencode_row_two_gauges_morph_height_and_y_with_hover_phase() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let week_gauge = children
+        .iter()
+        .find(|o| o.id == "opencode-week-segments-dark")
+        .unwrap();
+    let monthly_gauge = children
+        .iter()
+        .find(|o| o.id == "opencode-monthly-segments-dark")
+        .unwrap();
+
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+    for phase in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        context.insert("opencode.hover_phase", phase);
+        let h_week = evaluate(&week_gauge.height.0, &context).unwrap();
+        let y_week = evaluate(&week_gauge.y.0, &context).unwrap();
+        let h_month = evaluate(&monthly_gauge.height.0, &context).unwrap();
+        let y_month = evaluate(&monthly_gauge.y.0, &context).unwrap();
+
+        assert_eq!(y_week, 27.0);
+        assert_eq!(h_week, 6.0 - 3.0 * phase);
+        assert_eq!(h_month, 3.0 + 3.0 * phase);
+        assert_eq!(y_month, 35.0 - 3.0 * phase);
+
+        // Gap between the two sub-bars is always exactly 2 px.
+        let gap = y_month - (y_week + h_week);
+        assert_eq!(
+            gap, 2.0,
+            "gap between sub-bars must be 2 px at phase {phase}"
+        );
+    }
+}
+
+#[test]
+fn opencode_text_labels_do_not_contain_prefixes_and_have_standard_width() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let session_text = children
+        .iter()
+        .find(|o| o.id == "opencode-session-value-dark")
+        .unwrap();
+    let week_text = children
+        .iter()
+        .find(|o| o.id == "opencode-week-text-dark-normal")
+        .unwrap();
+    let monthly_text = children
+        .iter()
+        .find(|o| o.id == "opencode-monthly-text-dark-hover")
+        .unwrap();
+
+    assert_eq!(session_text.width.0, "62");
+    assert_eq!(week_text.width.0, "62");
+    assert_eq!(monthly_text.width.0, "62");
+    assert_eq!(session_text.y.0, "8");
+    assert_eq!(week_text.y.0, "25");
+    assert_eq!(monthly_text.y.0, "25");
+
+    match (
+        &session_text.content,
+        &week_text.content,
+        &monthly_text.content,
+    ) {
+        (
+            SceneContent::Text {
+                template: session_tmpl,
+                ..
+            },
+            SceneContent::Text {
+                template: week_tmpl,
+                ..
+            },
+            SceneContent::Text {
+                template: monthly_tmpl,
+                ..
+            },
+        ) => {
+            assert_eq!(session_tmpl, "{opencode.session.display:usage_line}");
+            assert_eq!(week_tmpl, "{opencode.week.display:usage_line}");
+            assert_eq!(monthly_tmpl, "{opencode.monthly.display:usage_line}");
+            assert!(!week_tmpl.contains("7d"));
+            assert!(!monthly_tmpl.contains("30d"));
+        }
+        _ => panic!("labels must be text"),
+    }
+}
+
+#[test]
+fn opencode_widget_width_matches_dual_mode_provider_width() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let provider = children
+        .iter()
+        .find(|o| o.id == "opencode-provider")
+        .unwrap();
+
+    assert_eq!(
+        provider.width.0,
+        "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress + 12"
+    );
 }
