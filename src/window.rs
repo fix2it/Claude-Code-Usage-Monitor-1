@@ -113,9 +113,13 @@ struct AppState {
     pub(super) codex_crossfade_animation: Option<PhaseAnimation>,
     pub(super) codex_tile_rect: Option<(f64, f64, f64, f64)>,
     pub(super) opencode_tile_rect: Option<(f64, f64, f64, f64)>,
+    pub(super) qoder_tile_rect: Option<(f64, f64, f64, f64)>,
     opencode_hovered: bool,
+    qoder_hovered: bool,
     opencode_crossfade_opacity: f64,
+    qoder_crossfade_opacity: f64,
     opencode_crossfade_animation: Option<PhaseAnimation>,
+    qoder_crossfade_animation: Option<PhaseAnimation>,
     /// Selected widget view mode (1..3) and its continuous animation phase
     /// (0.0 = mode 1, 1.0 = mode 2, 2.0 = mode 3).
     view_mode: u8,
@@ -184,6 +188,7 @@ impl AppState {
             || self.claude_crossfade_animation.is_some()
             || self.codex_crossfade_animation.is_some()
             || self.opencode_crossfade_animation.is_some()
+            || self.qoder_crossfade_animation.is_some()
             || self.mode_animation.is_some()
     }
 
@@ -879,6 +884,7 @@ fn theme_runtime_from_state(state: &AppState) -> ThemeRuntime {
         .with_view_mode(state.view_mode)
         .with_mode_phase(state.mode_phase)
         .with_opencode_state(state.opencode_crossfade_opacity)
+        .with_qoder_state(state.qoder_crossfade_opacity)
         .with_nest(nest)
         .with_floating_card_opacity(opacity)
         .with_antigravity_pools(
@@ -2031,6 +2037,7 @@ fn replace_active_theme(state: &mut AppState, loaded: ThemeDocument, path: Optio
     state.claude_tile_rect = None;
     state.codex_tile_rect = None;
     state.opencode_tile_rect = None;
+    state.qoder_tile_rect = None;
     if path.is_some() {
         state.active_theme_path = path;
     }
@@ -2712,9 +2719,13 @@ pub fn run() {
                 codex_crossfade_animation: None,
                 codex_tile_rect: None,
                 opencode_tile_rect: None,
+                qoder_tile_rect: None,
                 opencode_hovered: false,
+                qoder_hovered: false,
                 opencode_crossfade_opacity: 0.0,
+                qoder_crossfade_opacity: 0.0,
                 opencode_crossfade_animation: None,
+                qoder_crossfade_animation: None,
                 view_mode: settings.view_mode,
                 mode_phase: (f64::from(settings.view_mode) - 1.0).clamp(0.0, 2.0),
                 mode_direction: 1,
@@ -2946,6 +2957,15 @@ fn render_layered_impl(trigger: RenderTrigger) {
                         usage_data.as_ref(),
                         surface_runtime,
                         mouse::OPENCODE_HOVER_OBJECT,
+                    );
+                }
+                if state.qoder_tile_rect.is_none() {
+                    state.qoder_tile_rect = theme_engine::object_bounds(
+                        &theme,
+                        0,
+                        usage_data.as_ref(),
+                        surface_runtime,
+                        mouse::QODER_HOVER_OBJECT,
                     );
                 }
             }
@@ -3574,6 +3594,7 @@ const ANTIGRAVITY_CROSSFADE_DURATION_MS: u64 = 200;
 const CODEX_CROSSFADE_DURATION_MS: u64 = 200;
 const CLAUDE_CROSSFADE_DURATION_MS: u64 = 200;
 const OPENCODE_CROSSFADE_DURATION_MS: u64 = 200;
+const QODER_CROSSFADE_DURATION_MS: u64 = 200;
 const MODE_TRANSITION_DURATION_MS: u64 = 200;
 const ANTIGRAVITY_CROSSFADE_TICK_MS: u32 = 16;
 
@@ -3724,6 +3745,7 @@ fn invalidate_hover_tile_rects(state: &mut AppState) {
     state.claude_tile_rect = None;
     state.codex_tile_rect = None;
     state.opencode_tile_rect = None;
+    state.qoder_tile_rect = None;
 }
 
 /// Toggle the opt-in Fable column and invalidate the geometry-dependent hover
@@ -3793,6 +3815,10 @@ pub(super) fn tick_animations(hwnd: HWND, throttle: bool) {
             (
                 &mut state.opencode_crossfade_animation,
                 &mut state.opencode_crossfade_opacity,
+            ),
+            (
+                &mut state.qoder_crossfade_animation,
+                &mut state.qoder_crossfade_opacity,
             ),
             (&mut state.mode_animation, &mut state.mode_phase),
         ] {
@@ -3938,6 +3964,41 @@ pub(super) fn set_opencode_hover(hwnd: HWND, hovered: bool) {
     }
 }
 
+/// Drives the Qoder hover phase (its dual bottom row swaps on hover).
+/// Unlike the three dual-mode providers this is gated on the provider being
+/// enabled, not on dual-mode account selection.
+pub(super) fn set_qoder_hover(hwnd: HWND, hovered: bool) {
+    let mut should_animate = false;
+    {
+        let mut state = lock_state();
+        let Some(state) = state.as_mut() else {
+            return;
+        };
+        if state.qoder_hovered != hovered {
+            state.qoder_hovered = hovered;
+            // Only a second extra pool has anything to reveal on hover.
+            let has_second_pool = state
+                .data
+                .as_ref()
+                .and_then(|data| data.get(ProviderId::Qoder))
+                .is_some_and(|usage| usage.week.is_some());
+            if state.providers.contains(ProviderId::Qoder) && (has_second_pool || !hovered) {
+                let target = if hovered { 1.0 } else { 0.0 };
+                state.qoder_crossfade_animation = Some(PhaseAnimation::hover(
+                    state.qoder_crossfade_opacity,
+                    target,
+                    std::time::Duration::from_millis(QODER_CROSSFADE_DURATION_MS),
+                ));
+                should_animate = true;
+            }
+        }
+    }
+    if should_animate {
+        ensure_crossfade_timer(hwnd);
+        render_layered_animation();
+    }
+}
+
 fn reload_external_settings(hwnd: HWND) {
     let settings = load_settings();
     let language_override = settings.language.as_deref().and_then(LanguageId::from_code);
@@ -3994,11 +4055,18 @@ fn reload_external_settings(hwnd: HWND) {
             state.opencode_crossfade_opacity = 0.0;
             state.opencode_crossfade_animation = None;
         }
+        let qoder_active = state.providers.contains(ProviderId::Qoder);
+        if !qoder_active {
+            state.qoder_hovered = false;
+            state.qoder_crossfade_opacity = 0.0;
+            state.qoder_crossfade_animation = None;
+        }
         state.stop_crossfade_timer_if_idle(hwnd);
         state.antigravity_tile_rect = None;
         state.claude_tile_rect = None;
         state.codex_tile_rect = None;
         state.opencode_tile_rect = None;
+        state.qoder_tile_rect = None;
         update_configured_placement(
             state,
             settings.placement_override,

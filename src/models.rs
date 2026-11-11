@@ -97,6 +97,16 @@ pub struct UsageData {
     /// fall back to a fixed 30-day window.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub monthly_started_at: Option<SystemTime>,
+    /// Start of a `session` window that is not the usual 5 hours (Qoder
+    /// credit packs); with `session.resets_at` it sets the pace length.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_started_at: Option<SystemTime>,
+    /// Start of a `week` slot that is not a 7-day window (Qoder).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub week_started_at: Option<SystemTime>,
+    /// Short label for `week` when it is not the 7-day window.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub week_label: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credits: Option<CreditsSection>,
     /// Additional API quotas, exposed only through opt-in theme bindings.

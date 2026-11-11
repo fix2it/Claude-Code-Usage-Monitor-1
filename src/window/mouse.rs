@@ -362,6 +362,7 @@ pub(super) const ANTIGRAVITY_HOVER_OBJECT: &str = "antigravity-provider";
 pub(super) const CLAUDE_HOVER_OBJECT: &str = "claude-provider";
 pub(super) const CODEX_HOVER_OBJECT: &str = "codex-provider";
 pub(super) const OPENCODE_HOVER_OBJECT: &str = "opencode-provider";
+pub(super) const QODER_HOVER_OBJECT: &str = "qoder-provider";
 
 fn tile_hover_at(
     state: &super::AppState,
@@ -419,7 +420,7 @@ pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
     track_mouse_hover_with(hwnd, widget_tooltip::visible_for(hwnd), |tracking| unsafe {
         TrackMouseEvent(tracking)
     });
-    let (antigravity_hovered, claude_hovered, codex_hovered, opencode_hovered) = {
+    let (antigravity_hovered, claude_hovered, codex_hovered, opencode_hovered, qoder_hovered) = {
         let state = lock_state();
         if let Some(state) = state.as_ref() {
             (
@@ -427,9 +428,10 @@ pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
                 tile_hover_at(state, hwnd, lparam, state.claude_tile_rect),
                 tile_hover_at(state, hwnd, lparam, state.codex_tile_rect),
                 tile_hover_at(state, hwnd, lparam, state.opencode_tile_rect),
+                tile_hover_at(state, hwnd, lparam, state.qoder_tile_rect),
             )
         } else {
-            (false, false, false, false)
+            (false, false, false, false, false)
         }
     };
     set_antigravity_hover(hwnd, antigravity_hovered);
@@ -439,6 +441,7 @@ pub(super) fn update_mouse_hover(hwnd: HWND, lparam: LPARAM) {
     // and the provider wrappers have none, so the OpenCode tile is detected
     // with the same cached `object_bounds` rect as the other three providers.
     super::set_opencode_hover(hwnd, opencode_hovered);
+    super::set_qoder_hover(hwnd, qoder_hovered);
     // No tick here: the animation timer drives every frame. Ticking on mouse
     // move used to produce a second full render right after `set_*_hover`
     // already rendered the first frame, and its 15 ms throttle could swallow
@@ -510,6 +513,7 @@ pub(super) fn clear_mouse_hover(hwnd: HWND) {
     super::set_claude_hover(hwnd, false);
     super::set_codex_hover(hwnd, false);
     super::set_opencode_hover(hwnd, false);
+    super::set_qoder_hover(hwnd, false);
     let previous = {
         let mut state = lock_state();
         let Some(state) = state.as_mut() else {

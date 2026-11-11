@@ -1370,6 +1370,7 @@ pub struct ThemeRuntime {
     pub codex_main_enabled: bool,
     pub codex_x_enabled: bool,
     pub opencode_crossfade_opacity: f64,
+    pub qoder_crossfade_opacity: f64,
     host_width: u32,
     host_height: u32,
 }
@@ -1401,6 +1402,7 @@ impl Default for ThemeRuntime {
             codex_main_enabled: true,
             codex_x_enabled: false,
             opencode_crossfade_opacity: 0.0,
+            qoder_crossfade_opacity: 0.0,
             host_width: default_canvas_width(),
             host_height: default_canvas_height(),
         }
@@ -1449,6 +1451,7 @@ impl ThemeRuntime {
             codex_main_enabled: true,
             codex_x_enabled: false,
             opencode_crossfade_opacity: 0.0,
+            qoder_crossfade_opacity: 0.0,
             host_width: default_canvas_width(),
             host_height: default_canvas_height(),
         }
@@ -1548,6 +1551,11 @@ impl ThemeRuntime {
 
     pub fn with_opencode_state(mut self, opacity: f64) -> Self {
         self.opencode_crossfade_opacity = opacity;
+        self
+    }
+
+    pub fn with_qoder_state(mut self, opacity: f64) -> Self {
+        self.qoder_crossfade_opacity = opacity;
         self
     }
 
@@ -1737,6 +1745,7 @@ fn insert_animation_bindings(context: &mut DataContext, runtime: &ThemeRuntime) 
         "opencode.hover_phase",
         clamp(runtime.opencode_crossfade_opacity),
     );
+    context.insert("qoder.hover_phase", clamp(runtime.qoder_crossfade_opacity));
 }
 
 impl DataContext {
@@ -1873,6 +1882,7 @@ impl DataContext {
             (runtime.codex_main_enabled && runtime.codex_x_enabled) as u8 as f64,
         );
         context.insert_hover_crossfade("opencode", runtime.opencode_crossfade_opacity);
+        context.insert_hover_crossfade("qoder", runtime.qoder_crossfade_opacity);
         if let Some(data) = data {
             for account in &data.accounts {
                 let key = format!(
@@ -2115,6 +2125,13 @@ impl DataContext {
         self.insert(&format!("{name}.weekly.display"), shown_weekly);
         // Pace: the share a window would have spent by now at an even rate.
         // `expected_display` follows the countdown setting like `display`.
+        // Providers with a non-standard session slot (Qoder credit packs)
+        // give its start; everyone else uses the 5-hour window.
+        let session_length = usage
+            .and_then(|usage| usage.session_started_at.zip(usage.session.resets_at))
+            .and_then(|(start, end)| end.duration_since(start).ok())
+            .filter(|length| !length.is_zero())
+            .unwrap_or(FIVE_HOURS);
         let five_hour_section = usage
             .filter(|usage| usage.session.available)
             .map(|usage| &usage.session);
@@ -2124,7 +2141,7 @@ impl DataContext {
         let session_section = if use_codex_session_fallback {
             weekly_section.map(|section| (section, WEEK))
         } else {
-            five_hour_section.map(|section| (section, FIVE_HOURS))
+            five_hour_section.map(|section| (section, session_length))
         };
         for (window, section) in [
             ("session", session_section),
@@ -2152,7 +2169,20 @@ impl DataContext {
         // come from `week` directly rather than from the auto-selected slot.
         let week = usage.and_then(|usage| usage.week.as_ref());
         let week_percentage = week.map(|week| week.percentage).unwrap_or(0.0);
-        self.insert_string(&format!("{name}.week.label"), "7d");
+        let week_label = usage
+            .and_then(|usage| usage.week_label.as_deref())
+            .unwrap_or("7d")
+            .to_string();
+        self.insert_string(&format!("{name}.week.label"), week_label);
+        let week_length = usage
+            .and_then(|usage| {
+                usage
+                    .week_started_at
+                    .zip(week.and_then(|week| week.resets_at))
+            })
+            .and_then(|(start, end)| end.duration_since(start).ok())
+            .filter(|length| !length.is_zero())
+            .unwrap_or(WEEK);
         self.insert(
             &format!("{name}.week.available"),
             week.is_some() as u8 as f64,
@@ -2167,7 +2197,7 @@ impl DataContext {
         self.insert(&format!("{name}.week.display"), shown_week);
         let week_expected = week
             .filter(|week| week.available)
-            .and_then(|week| expected_used(week.resets_at?, WEEK));
+            .and_then(|week| expected_used(week.resets_at?, week_length));
         self.insert(
             &format!("{name}.week.expected_available"),
             week_expected.is_some() as u8 as f64,

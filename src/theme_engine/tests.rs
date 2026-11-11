@@ -4292,7 +4292,7 @@ fn compact_pace_ticks_validate_and_stay_inside_their_gauges() {
         .enumerate()
         .filter(|(_, object)| object.id.ends_with("-pace"))
         .collect::<Vec<_>>();
-    assert_eq!(ticks.len(), 70);
+    assert_eq!(ticks.len(), 76);
     for (index, tick) in ticks {
         let gauge = &children[index - 1];
         assert_eq!(tick.id, format!("{}-pace", gauge.id));
@@ -4546,7 +4546,7 @@ fn compact_markers_are_centered_and_clear_of_the_gauges() {
         .iter()
         .filter(|o| o.id.contains("-marker-"))
         .collect::<Vec<_>>();
-    assert_eq!(markers.len(), 20);
+    assert_eq!(markers.len(), 24);
     let boxes = markers
         .iter()
         .map(|o| (o.x.0.clone(), o.width.0.clone()))
@@ -4563,7 +4563,10 @@ fn compact_markers_are_centered_and_clear_of_the_gauges() {
             } => {
                 assert_eq!(*align, TextAlign::Center, "{}", marker.id);
                 assert!(
-                    matches!(template.as_str(), "o" | "x" | "w" | "m"),
+                    matches!(
+                        template.as_str(),
+                        "o" | "x" | "w" | "m" | "{qoder.session.label}" | "{qoder.week.label}"
+                    ),
                     "{}",
                     marker.id
                 );
@@ -4580,7 +4583,14 @@ fn compact_markers_are_centered_and_clear_of_the_gauges() {
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(
         templates,
-        std::collections::BTreeSet::from(["m", "o", "w", "x"])
+        std::collections::BTreeSet::from([
+            "m",
+            "o",
+            "w",
+            "x",
+            "{qoder.session.label}",
+            "{qoder.week.label}"
+        ])
     );
 
     // Claude/Codex gauges start at x = 12, so the marker box ending at x = 9
@@ -4611,7 +4621,7 @@ fn compact_pace_ticks_follow_morphing_gauges_at_every_hover_phase() {
         .enumerate()
         .filter(|(_, object)| object.id.ends_with("-pace"))
         .collect::<Vec<_>>();
-    assert_eq!(ticks.len(), 70);
+    assert_eq!(ticks.len(), 76);
     let mut context = DataContext::from_usage(None, &Canvas::default());
     for opacity in [
         "antigravity.gemini.opacity",
@@ -4626,7 +4636,7 @@ fn compact_pace_ticks_follow_morphing_gauges_at_every_hover_phase() {
         context.insert(opacity, 1.0);
     }
     for phase in [0.0, 0.25, 0.5, 0.75, 1.0] {
-        for provider in ["antigravity", "claude", "codex", "opencode"] {
+        for provider in ["antigravity", "claude", "codex", "opencode", "qoder"] {
             context.insert(&format!("{provider}.hover_phase"), phase);
         }
         for (index, tick) in &ticks {
@@ -5080,7 +5090,7 @@ fn compact_percent_twins_crossfade_values_on_hover_in_every_mode() {
             other => panic!("{} is not text: {other:?}", twin.id),
         }
     }
-    assert_eq!(twins, 64);
+    assert_eq!(twins, 68);
 
     // A dual-mode row: mode controls appearance, hover controls the value.
     let normal = by_id("claude-main-text-dark-normal-pct");
@@ -5557,4 +5567,58 @@ fn opencode_missing_windows_render_as_unavailable_instead_of_zero_percent() {
         format_template("{opencode.week.display:usage_line}", &context),
         "--"
     );
+}
+
+/// Manual visual check of the Qoder tile: plan on top, the extra pool below,
+/// and the dual bottom row with its hover swap. Run with:
+///   cargo test --locked render_qoder_previews -- --ignored --nocapture
+#[test]
+#[ignore = "manual visual verification; writes PNG previews to the temp directory"]
+fn render_qoder_previews() {
+    use crate::models::{AppUsageData, UsageData, UsageSection};
+    use std::time::{Duration, SystemTime};
+
+    let raw = include_str!("../themes/compact-fluent-quad.json");
+    let out = std::env::temp_dir().join("qoder-previews");
+    std::fs::create_dir_all(&out).unwrap();
+    let day = Duration::from_secs(86_400);
+    let window = |percentage: f64, days_left: u64| UsageSection {
+        available: true,
+        percentage,
+        resets_at: Some(SystemTime::now() + day * days_left as u32),
+    };
+    let start = |days_left: u64| Some(SystemTime::now() + day * days_left as u32 - day * 30);
+    for dual in [false, true] {
+        let usage = UsageData {
+            weekly: window(8.3, 13),
+            monthly: Some(window(8.3, 13)),
+            monthly_started_at: start(13),
+            session: window(7.8, 2),
+            session_label: Some("u".into()),
+            session_started_at: start(2),
+            week: dual.then(|| window(40.0, 13)),
+            week_label: dual.then(|| "c".into()),
+            week_started_at: if dual { start(13) } else { None },
+            ..Default::default()
+        };
+        let data = AppUsageData::from_iter([(ProviderId::Qoder, usage)]);
+        let forced = raw.replace("system.dark", "1");
+        let theme: ThemeDocument = serde_json::from_str(&forced).unwrap();
+        for phase in [0.0_f64, 1.0] {
+            let runtime =
+                ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Qoder]))
+                    .with_qoder_state(phase)
+                    .with_show_pace(true);
+            let rendered =
+                render_theme_surface_with_runtime_at_scale(&theme, 0, Some(&data), runtime, 3.0);
+            assert!(rendered.warnings.is_empty(), "{:?}", rendered.warnings);
+            let path = out.join(format!(
+                "qoder-{}-hover-{:.0}.png",
+                if dual { "dual" } else { "single" },
+                phase * 100.0
+            ));
+            write_preview_png(&rendered, &path, true);
+            println!("{}", path.display());
+        }
+    }
 }

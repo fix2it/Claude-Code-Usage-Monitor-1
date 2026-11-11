@@ -38,7 +38,8 @@ A field that does not parse stays unknown; nothing panics.
 |---|---|
 | `weekly` | Plan Credits: `percentage` used, `resets_at` = plan expiry. `weekly_label` = `"Plan"`. Widgets and tray read this. |
 | `monthly` | Same as `weekly`, for `limits.py`, which reads `monthly` like the OpenCode entry. |
-| `session` | `available: false` (Qoder has no short window). |
+| `session` | The extra pool for the widget's bottom row, `session_label` `u` (Ultimate) or `c` (add-on credits). Rule: the pool in use (used > 0); both in use: Ultimate; neither: Ultimate. `session_started_at` = reset − 30 days (pace window). |
+| `week` | Present only when both extra pools are in use: the add-on pool, `week_label` `c`, `week_started_at` for pace. The compact widget draws it as a thin bar and swaps it in on hover. |
 | `credits` | Add-on credits: `percentage`, `remaining`, `total`. |
 | `limits[]` | `ultimate_exclusive`: Ultimate Exclusive Credits as a percentage with its expiry. |
 | `plan_name` | e.g. `"ProTrial"`. |
@@ -62,6 +63,17 @@ Example (real probe, 2026-11-12):
   ]
 }
 ```
+
+Pace: Qoder reports only end dates, so every pace tick assumes a 30-day
+window ending at the reset or expiry (`monthly_started_at`,
+`session_started_at`, `week_started_at`). Add-on credits show no expiry and
+are taken to end with the plan.
+
+Widget (`compact-fluent-quad`): top row = plan (`qoder.monthly`), bottom row =
+`qoder.session` with marker `u`/`c`; with two pools in use a thin
+`qoder.week` bar appears and hover swaps the bars, text and marker, like
+OpenCode's `w`/`m`. Preview: `cargo test --locked render_qoder_previews --
+--ignored --nocapture`.
 
 `limits.py` caveat: its `window()` assumes a 30-day `monthly` span for pace.
 The Qoder plan period is the plan term, so pace from `limits.py` is only a

@@ -21,6 +21,9 @@ const MIN_PROBE_INTERVAL: Duration = Duration::from_secs(15 * 60);
 /// Hard cap on one probe; the process tree is killed when it is reached.
 const PROBE_TIMEOUT: Duration = Duration::from_secs(30);
 const BOOT_TIMEOUT: Duration = Duration::from_secs(20);
+/// Assumed length of every Qoder allowance for pace ticks (Qoder reports
+/// only end dates).
+const PACE_WINDOW: Duration = Duration::from_secs(30 * 24 * 3600);
 
 struct ProbeMemo {
     at: Instant,
@@ -362,9 +365,52 @@ pub(super) fn usage_data(usage: &QoderUsage) -> Option<UsageData> {
         })
         .into_iter()
         .collect();
+    // Bottom row of the widget: the extra pool in use. Both in use: Ultimate
+    // in `session`, add-on in `week`. Neither in use: Ultimate (or add-on
+    // when there is no Ultimate pool).
+    let ultimate = usage
+        .ultimate_credits
+        .map(|ratio| (ratio, usage.ultimate_expires_at, "u"));
+    // Qoder does not show when add-on credits expire; they last as long as
+    // the plan.
+    let add_on = usage
+        .add_on_credits
+        .map(|ratio| (ratio, usage.plan_expires_at, "c"));
+    let in_use = |pool: &Option<((f64, f64), Option<SystemTime>, &str)>| {
+        pool.is_some_and(|((used, _), _, _)| used > 0.0)
+    };
+    let (primary, secondary) = match (in_use(&ultimate), in_use(&add_on)) {
+        (true, true) => (ultimate, add_on),
+        (false, true) => (add_on, None),
+        _ => (ultimate.or(add_on), None),
+    };
+    // Pace needs a window start Qoder does not report: assume the last
+    // PACE_WINDOW before each reset or expiry, like OpenCode's fallback.
+    let section = |pool: &Option<((f64, f64), Option<SystemTime>, &str)>| {
+        pool.map(|(ratio, resets_at, _)| UsageSection {
+            available: true,
+            percentage: used_percentage(ratio),
+            resets_at,
+        })
+    };
+    let window_start = |pool: &Option<((f64, f64), Option<SystemTime>, &str)>| {
+        pool.and_then(|(_, resets_at, _)| resets_at?.checked_sub(PACE_WINDOW))
+    };
+    let label = |pool: &Option<((f64, f64), Option<SystemTime>, &str)>| {
+        pool.map(|(_, _, label)| label.to_string())
+    };
     Some(UsageData {
+        session: section(&primary).unwrap_or_default(),
+        session_label: label(&primary),
+        session_started_at: window_start(&primary),
+        week: section(&secondary),
+        week_label: label(&secondary),
+        week_started_at: window_start(&secondary),
         weekly: plan.clone().unwrap_or_default(),
         weekly_label: plan.as_ref().map(|_| "Plan".into()),
+        monthly_started_at: plan
+            .as_ref()
+            .and_then(|plan| plan.resets_at?.checked_sub(PACE_WINDOW)),
         monthly: plan,
         credits: usage.add_on_credits.map(|(used, total)| CreditsSection {
             percentage: used_percentage((used, total)),
@@ -720,7 +766,16 @@ mod tests {
         assert_eq!(unix(monthly.resets_at.unwrap()), 1_795_635_312);
         assert_eq!(data.weekly, *monthly);
         assert_eq!(data.weekly_label.as_deref(), Some("Plan"));
-        assert!(!data.session.available);
+        // Only Ultimate is in use: it is the bottom row, with no second pool.
+        assert!(data.session.available);
+        assert!((data.session.percentage - 4.4).abs() < 1e-9);
+        assert_eq!(data.session_label.as_deref(), Some("u"));
+        assert_eq!(unix(data.session.resets_at.unwrap()), 1_794_614_400);
+        assert_eq!(
+            unix(data.session_started_at.unwrap()),
+            1_794_614_400 - 30 * 86_400
+        );
+        assert!(data.week.is_none());
         let credits = data.credits.as_ref().unwrap();
         assert_eq!(
             (credits.percentage, credits.remaining, credits.total),
@@ -760,6 +815,26 @@ mod tests {
         assert_eq!(data.weekly.resets_at, None);
         assert!(data.credits.is_none());
         assert!(data.limits.is_empty());
+    }
+
+    fn bottom_row(add_on_used: f64, ultimate_used: f64) -> (Option<String>, Option<String>) {
+        let usage = QoderUsage {
+            plan_credits: Some((1.0, 300.0)),
+            add_on_credits: Some((add_on_used, 100.0)),
+            ultimate_credits: Some((ultimate_used, 500.0)),
+            ..Default::default()
+        };
+        let data = usage_data(&usage).unwrap();
+        (data.session_label, data.week_label)
+    }
+
+    #[test]
+    fn bottom_row_shows_the_pools_in_use() {
+        let pair = |a: &str, b: Option<&str>| (Some(a.to_string()), b.map(str::to_string));
+        assert_eq!(bottom_row(0.0, 0.0), pair("u", None));
+        assert_eq!(bottom_row(0.0, 5.0), pair("u", None));
+        assert_eq!(bottom_row(5.0, 0.0), pair("c", None));
+        assert_eq!(bottom_row(5.0, 5.0), pair("u", Some("c")));
     }
 
     #[test]

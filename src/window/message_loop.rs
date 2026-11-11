@@ -171,6 +171,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                 state.claude_tile_rect = None;
                 state.codex_tile_rect = None;
                 state.opencode_tile_rect = None;
+                state.qoder_tile_rect = None;
             }
             check_theme_change();
             check_language_change();
@@ -900,6 +901,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                                 s.claude_tile_rect = None;
                                 s.codex_tile_rect = None;
                                 s.opencode_tile_rect = None;
+                                s.qoder_tile_rect = None;
                                 if !any_pool {
                                     s.antigravity_hovered = false;
                                     s.crossfade_opacity = 1.0;
@@ -1112,6 +1114,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                                 }
                                 s.codex_tile_rect = None;
                                 s.opencode_tile_rect = None;
+                                s.qoder_tile_rect = None;
                             }
                         }
                     }
@@ -1135,6 +1138,7 @@ pub(super) unsafe extern "system" fn wnd_proc(
                             s.claude_tile_rect = None;
                             s.codex_tile_rect = None;
                             s.opencode_tile_rect = None;
+                            s.qoder_tile_rect = None;
                             if !s.providers.contains(ProviderId::Claude) {
                                 s.claude_hovered = false;
                                 s.claude_crossfade_opacity = 0.0;
