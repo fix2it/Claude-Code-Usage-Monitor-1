@@ -5449,3 +5449,112 @@ fn opencode_widget_width_matches_dual_mode_provider_width() {
         "display.bar_width + 4 * (1 - display.mode_text_progress) + display.text_width + 30 * display.mode_bar_progress + 12"
     );
 }
+
+#[test]
+fn opencode_pace_ticks_stay_inside_their_gauges_at_fractional_bar_widths() {
+    let theme: ThemeDocument =
+        serde_json::from_str(include_str!("../themes/compact-fluent-quad.json")).unwrap();
+    let children = &theme.surfaces[0].children;
+    let mut context = DataContext::from_usage(None, &Canvas::default());
+    context.insert("display.show_pace", 1.0);
+    for window in ["session", "week", "monthly"] {
+        let binding = format!("opencode.{window}");
+        context.insert(&format!("{binding}.expected_available"), 1.0);
+        let ticks = children
+            .iter()
+            .enumerate()
+            .filter(|(_, object)| {
+                object.id == format!("opencode-{window}-segments-dark-pace")
+                    || object.id == format!("opencode-{window}-segments-light-pace")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(ticks.len(), 2, "{window}");
+        for (index, tick) in ticks {
+            let gauge = &children[index - 1];
+            assert_eq!(tick.id, format!("{}-pace", gauge.id));
+            for expected in [0.0, 50.0, 100.0] {
+                context.insert(&format!("{binding}.expected_display"), expected);
+                // Collapsing below one pixel leaves no room for the tick; it
+                // parks at the gauge start and the mode fade hides it.
+                for bar_width in [0.0, 0.1, 0.4, 0.8, 0.99] {
+                    context.insert("display.bar_width", bar_width);
+                    let start = evaluate(&gauge.x.0, &context).unwrap();
+                    assert_eq!(
+                        evaluate(&tick.x.0, &context).unwrap(),
+                        start,
+                        "{} at bar_width {bar_width}",
+                        tick.id
+                    );
+                }
+                for bar_width in [1.0, 1.6, 2.4, 10.0, 44.0] {
+                    context.insert("display.bar_width", bar_width);
+                    let start = evaluate(&gauge.x.0, &context).unwrap();
+                    let end = start + evaluate(&gauge.width.0, &context).unwrap();
+                    let x = evaluate(&tick.x.0, &context).unwrap();
+                    assert!(x >= start && x + 1.0 <= end, "{}: {x}", tick.id);
+                    assert_eq!(x.fract(), 0.0);
+                    if expected <= 0.0 {
+                        assert_eq!(x, start);
+                    } else if expected >= 100.0 && bar_width.fract() == 0.0 {
+                        assert_eq!(x + 1.0, end);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn opencode_missing_windows_render_as_unavailable_instead_of_zero_percent() {
+    use crate::models::{UsageData, UsageSection};
+    use std::time::SystemTime;
+
+    let now = SystemTime::now();
+    let section = |percentage: f64| UsageSection {
+        available: true,
+        percentage,
+        resets_at: Some(now + WEEK / 2),
+    };
+
+    let only_month = AppUsageData::from_iter([(
+        ProviderId::OpenCode,
+        UsageData {
+            session: section(10.0),
+            week: None,
+            weekly: section(60.0),
+            monthly: Some(section(60.0)),
+            ..Default::default()
+        },
+    )]);
+    let context = DataContext::from_usage(Some(&only_month), &Canvas::default());
+    assert_eq!(context.get("opencode.week.available"), Some(0.0));
+    assert_eq!(
+        format_template("{opencode.week.display:usage_line}", &context),
+        "--"
+    );
+    assert_ne!(
+        format_template("{opencode.monthly.display:usage_line}", &context),
+        "--"
+    );
+
+    let only_week = AppUsageData::from_iter([(
+        ProviderId::OpenCode,
+        UsageData {
+            session: section(10.0),
+            week: Some(section(45.0)),
+            weekly: section(45.0),
+            monthly: None,
+            ..Default::default()
+        },
+    )]);
+    let context = DataContext::from_usage(Some(&only_week), &Canvas::default());
+    assert_eq!(context.get("opencode.monthly.available"), Some(0.0));
+    assert_eq!(
+        format_template("{opencode.monthly.display:usage_line}", &context),
+        "--"
+    );
+    assert_ne!(
+        format_template("{opencode.week.display:usage_line}", &context),
+        "--"
+    );
+}
