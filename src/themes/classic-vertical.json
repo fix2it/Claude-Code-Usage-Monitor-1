@@ -20,7 +20,7 @@
         "offset_y": -52
       },
       "width": "min(62, max(1, host.width - 2))",
-      "height": "max(1, providers.count * 64 - (providers.grok.enabled + providers.copilot.enabled) * 22)",
+      "height": "max(1, providers.count * 64 - (providers.grok.enabled + providers.copilot.enabled + providers.qoder.enabled) * 22)",
       "mouse_events": {
         "right_click": "show_context_menu(\"classic-v1\")"
       },
@@ -1219,6 +1219,128 @@
             "direction": "left_to_right",
             "fill": {
               "color": "#DB2777"
+            },
+            "track": {
+              "color": "#80808040"
+            },
+            "corner_radius": "1"
+          }
+        },
+        {
+          "id": "qoder-provider",
+          "name": "Qoder",
+          "parent": "provider-column",
+          "render": "providers.qoder.enabled",
+          "width": "canvas.width",
+          "height": "42"
+        },
+        {
+          "id": "qoder-title",
+          "name": "qoder-title",
+          "parent": "qoder-provider",
+          "render": "system.dark",
+          "x": "2",
+          "y": "2",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "Qoder",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#818CF8"
+            }
+          }
+        },
+        {
+          "id": "qoder-title-light",
+          "name": "qoder-title-light",
+          "parent": "qoder-provider",
+          "render": "1 - system.dark",
+          "x": "2",
+          "y": "2",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "Qoder",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#3730A3"
+            }
+          }
+        },
+        {
+          "id": "qoder-weekly-value-dark",
+          "name": "qoder-weekly-value-dark",
+          "parent": "qoder-provider",
+          "render": "system.dark",
+          "x": "2",
+          "y": "18",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "{qoder.weekly.label} {qoder.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#F5F5F5"
+            }
+          }
+        },
+        {
+          "id": "qoder-weekly-value-light",
+          "name": "qoder-weekly-value-light",
+          "parent": "qoder-provider",
+          "render": "1 - system.dark",
+          "x": "2",
+          "y": "18",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "{qoder.weekly.label} {qoder.weekly.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#202020"
+            }
+          }
+        },
+        {
+          "id": "qoder-weekly-bar",
+          "name": "qoder weekly usage",
+          "parent": "qoder-provider",
+          "render": "qoder.weekly.available",
+          "x": "4",
+          "y": "33",
+          "width": "max(1, canvas.width - 8)",
+          "height": "3",
+          "content": {
+            "type": "progress",
+            "value": "qoder.weekly.display",
+            "direction": "left_to_right",
+            "fill": {
+              "color": "#6366F1"
             },
             "track": {
               "color": "#80808040"

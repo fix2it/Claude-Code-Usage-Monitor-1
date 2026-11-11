@@ -326,6 +326,7 @@ pub fn rendered_label(
         "Cursor" => language.text("Cursor"),
         "Grok" => language.text("Grok"),
         "Copilot" => language.text("Copilot"),
+        "Qoder" => language.text("Qoder"),
         "Open Dashboard" => language.text("Open Dashboard"),
         "Every minute" => language.text("Every minute"),
         "Every 5 minutes" => language.text("Every 5 minutes"),
@@ -432,6 +433,13 @@ pub fn classic_context_menu() -> ContextMenuDocument {
                 "Copilot",
                 Action::ToggleProvider {
                     provider: Provider::Copilot,
+                },
+            ),
+            ContextMenuItem::action(
+                "provider-qoder",
+                "Qoder",
+                Action::ToggleProvider {
+                    provider: Provider::Qoder,
                 },
             ),
         ],

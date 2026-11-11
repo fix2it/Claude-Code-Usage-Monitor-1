@@ -1095,11 +1095,11 @@ fn starter_theme_round_trips_and_validates() {
     // 1.4.9 palette follows the taskbar mode without runtime recolouring:
     // five providers over two windows in two modes, plus Grok and Copilot,
     // which fill only the long-window row, plus a credit overlay on that row
-    // for the three providers that report credits, plus the two eight-segment
-    // Fable layers.
+    // for the three providers that report credits, plus Qoder's two
+    // long-window layers, plus the two eight-segment Fable layers.
     assert_eq!(
         segments,
-        [vec![10; 5 * 2 * 2 + 2 * 2 + 3 * 2], vec![8; 2]].concat()
+        [vec![10; 5 * 2 * 2 + 2 * 2 + 3 * 2 + 2], vec![8; 2]].concat()
     );
     assert!(theme.surfaces[0]
         .children
@@ -2146,7 +2146,7 @@ fn starter_adapts_width_segments_and_collapsed_provider_rows() {
         ),
         (
             ThemeRuntime::from_providers(ProviderSet::from_enabled(ProviderId::ALL)),
-            725,
+            815,
             2,
         ),
     ] {
@@ -2342,7 +2342,7 @@ fn classic_vertical_stacks_enabled_providers_and_preserves_tray_roots() {
                 ThemeRuntime::from_providers(providers).with_host_dimensions(host_width, 1440);
             let width = (host_width - 2).min(62);
             let provider_height = |provider| match provider {
-                ProviderId::Grok | ProviderId::Copilot => 42,
+                ProviderId::Grok | ProviderId::Copilot | ProviderId::Qoder => 42,
                 _ => 64,
             };
             let height = providers.iter().map(provider_height).sum();
@@ -5080,7 +5080,7 @@ fn compact_percent_twins_crossfade_values_on_hover_in_every_mode() {
             other => panic!("{} is not text: {other:?}", twin.id),
         }
     }
-    assert_eq!(twins, 62);
+    assert_eq!(twins, 64);
 
     // A dual-mode row: mode controls appearance, hover controls the value.
     let normal = by_id("claude-main-text-dark-normal-pct");

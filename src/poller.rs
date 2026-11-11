@@ -287,10 +287,16 @@ mod copilot;
 mod cursor;
 mod grok;
 mod opencode;
+mod qoder;
 mod retry_after;
 mod windows_credentials;
 
 pub use retry_after::retry_delay_ms;
+
+/// Qoder is shown only while its CLI is installed.
+pub fn qoder_installed() -> bool {
+    qoder::qodercli_path().is_some()
+}
 
 struct ProviderPoller {
     id: ProviderId,
@@ -298,7 +304,7 @@ struct ProviderPoller {
     credential_watch: fn(bool) -> CredentialWatchSnapshot,
 }
 
-const PROVIDER_POLLERS: [ProviderPoller; 7] = [
+const PROVIDER_POLLERS: [ProviderPoller; 8] = [
     ProviderPoller {
         id: ProviderId::Claude,
         poll: claude::poll_claude_code,
@@ -333,6 +339,11 @@ const PROVIDER_POLLERS: [ProviderPoller; 7] = [
         id: ProviderId::Copilot,
         poll: copilot::poll_copilot,
         credential_watch: copilot::credential_watch_snapshot,
+    },
+    ProviderPoller {
+        id: ProviderId::Qoder,
+        poll: qoder::poll_qoder,
+        credential_watch: qoder::credential_watch_snapshot,
     },
 ];
 

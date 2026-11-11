@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use eframe::egui;
+use lucide_icons::Icon as LucideIcon;
 use windows::Win32::Graphics::Gdi::{
     CreateFontIndirectW, DeleteObject, GetDC, GetFontData, ReleaseDC, SelectObject, GDI_ERROR,
 };
@@ -52,7 +53,8 @@ pub(crate) const GITHUB_MARK_GLYPH: char = '\u{f000}';
 /// [`BRAND_MARK_FONT_BYTES`]. Adding a provider means drawing its mark into the
 /// font at the next free codepoint and extending this match, which the compiler
 /// asks for. `every_brand_mark_rasterizes_from_the_lucide_family` then checks
-/// that the glyph actually arrived.
+/// that the glyph actually arrived. Qoder has no mark in the companion font
+/// yet, so it borrows a Lucide glyph from the same family.
 pub(crate) fn provider_mark_glyph(provider: ProviderId) -> char {
     match provider {
         ProviderId::Claude => '\u{f001}',
@@ -62,6 +64,7 @@ pub(crate) fn provider_mark_glyph(provider: ProviderId) -> char {
         ProviderId::Cursor => '\u{f005}',
         ProviderId::Grok => '\u{f006}',
         ProviderId::Copilot => '\u{f007}',
+        ProviderId::Qoder => LucideIcon::Bot.unicode(),
     }
 }
 

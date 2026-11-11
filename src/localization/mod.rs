@@ -100,6 +100,10 @@ impl LanguageId {
                 strings.copilot_token_expired_title,
                 strings.copilot_token_expired_body,
             ),
+            ProviderId::Qoder => (
+                strings.qoder_token_expired_title,
+                strings.qoder_token_expired_body,
+            ),
         }
     }
 
@@ -188,12 +192,15 @@ pub struct Strings {
     pub grok_token_expired_body: &'static str,
     pub copilot_token_expired_title: &'static str,
     pub copilot_token_expired_body: &'static str,
+    pub qoder_token_expired_title: &'static str,
+    pub qoder_token_expired_body: &'static str,
     pub codex_window_title: &'static str,
     pub antigravity_window_title: &'static str,
     pub opencode_window_title: &'static str,
     pub cursor_window_title: &'static str,
     pub grok_window_title: &'static str,
     pub copilot_window_title: &'static str,
+    pub qoder_window_title: &'static str,
 }
 
 pub fn resolve_language(language_override: Option<LanguageId>) -> LanguageId {

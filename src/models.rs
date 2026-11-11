@@ -105,10 +105,28 @@ pub struct UsageData {
     /// Secondary quota pool for providers with multiple distinct allowances (e.g. Antigravity External Models).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub external_pool: Option<Box<UsageData>>,
+    /// Plan name as the provider shows it (Qoder: e.g. "ProTrial").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_name: Option<String>,
+    /// Credit allowances with absolute figures (Qoder plan, add-on and
+    /// Ultimate Exclusive credits), for external cache readers.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub credit_pools: Vec<CreditPool>,
     /// True when this reading was carried over from an earlier poll because
     /// the provider failed this cycle. The figures are real, just not current.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub stale: bool,
+}
+
+/// One credit allowance in absolute units.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreditPool {
+    pub key: String,
+    pub label: String,
+    pub used: f64,
+    pub total: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<SystemTime>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

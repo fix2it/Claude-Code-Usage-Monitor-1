@@ -66,6 +66,8 @@ pub struct SettingsFile {
     show_grok: bool,
     #[serde(default)]
     show_copilot: bool,
+    #[serde(default)]
+    show_qoder: bool,
     #[serde(default = "default_true")]
     pub custom_theme_enabled: bool,
     /// Show what is left of each allowance instead of what has been spent, so
@@ -153,6 +155,7 @@ impl Default for SettingsFile {
             show_cursor: false,
             show_grok: false,
             show_copilot: false,
+            show_qoder: false,
             custom_theme_enabled: true,
             usage_countdown: false,
             use_windows_default_font: true,
@@ -260,6 +263,8 @@ impl SettingsFile {
             ProviderId::Cursor => self.show_cursor,
             ProviderId::Grok => self.show_grok,
             ProviderId::Copilot => self.show_copilot,
+            // Off while qodercli is missing: probing needs the CLI.
+            ProviderId::Qoder => self.show_qoder && crate::poller::qoder_installed(),
         }
     }
 
@@ -308,6 +313,7 @@ impl SettingsFile {
             ProviderId::Cursor => self.show_cursor = enabled,
             ProviderId::Grok => self.show_grok = enabled,
             ProviderId::Copilot => self.show_copilot = enabled,
+            ProviderId::Qoder => self.show_qoder = enabled,
         }
     }
 
@@ -696,6 +702,7 @@ mod tests {
             ProviderId::Cursor,
             ProviderId::Grok,
             ProviderId::Copilot,
+            ProviderId::Qoder,
         ]));
 
         let json = settings_json(&settings);
@@ -706,6 +713,7 @@ mod tests {
         assert_eq!(json["show_cursor"], true);
         assert_eq!(json["show_grok"], true);
         assert_eq!(json["show_copilot"], true);
+        assert_eq!(json["show_qoder"], true);
 
         let decoded = decode_settings(&json.to_string()).unwrap();
         assert_eq!(decoded.enabled_providers(), settings.enabled_providers());

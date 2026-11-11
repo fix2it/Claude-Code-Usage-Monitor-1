@@ -567,6 +567,7 @@ fn window_label(provider: &str, window: &str) -> &'static str {
         ("cursor", "session") => "Auto",
         ("cursor", "weekly") => "API",
         ("opencode", "weekly") => "Long window",
+        ("qoder", "weekly") => "Plan",
         (_, "session") => "Session",
         (_, "five_hour") => "5-hour",
         (_, "weekly") => "Weekly",
