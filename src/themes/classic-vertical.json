@@ -1359,7 +1359,7 @@
           "height": "14",
           "content": {
             "type": "text",
-            "template": "{qoder.session.label} {qoder.session.display:usage_badge}",
+            "template": "{qoder.session.name} {qoder.session.display:usage_badge}",
             "font_family": "Segoe UI",
             "font_size": "min(10, (canvas.width - 4) / 5.5)",
             "weight": "medium",
@@ -1383,7 +1383,7 @@
           "height": "14",
           "content": {
             "type": "text",
-            "template": "{qoder.session.label} {qoder.session.display:usage_badge}",
+            "template": "{qoder.session.name} {qoder.session.display:usage_badge}",
             "font_family": "Segoe UI",
             "font_size": "min(10, (canvas.width - 4) / 5.5)",
             "weight": "medium",
@@ -1430,7 +1430,7 @@
           "height": "14",
           "content": {
             "type": "text",
-            "template": "{qoder.week.label} {qoder.week.display:usage_badge}",
+            "template": "{qoder.week.name} {qoder.week.display:usage_badge}",
             "font_family": "Segoe UI",
             "font_size": "min(10, (canvas.width - 4) / 5.5)",
             "weight": "medium",
@@ -1454,7 +1454,7 @@
           "height": "14",
           "content": {
             "type": "text",
-            "template": "{qoder.week.label} {qoder.week.display:usage_badge}",
+            "template": "{qoder.week.name} {qoder.week.display:usage_badge}",
             "font_family": "Segoe UI",
             "font_size": "min(10, (canvas.width - 4) / 5.5)",
             "weight": "medium",

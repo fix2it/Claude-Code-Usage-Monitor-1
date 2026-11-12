@@ -1588,6 +1588,16 @@ const MONTH: std::time::Duration = std::time::Duration::from_secs(30 * 24 * 3600
 
 /// Percent of a window of `length` that has passed by now, given when it
 /// resets; `None` when the reset is not within one window from now.
+/// Long name for a one-letter pool marker (Qoder `u`/`c`), for themes with
+/// room to spell it out; any other label is returned as it is.
+fn pool_name(label: &str) -> String {
+    match label {
+        "u" => "Ultima".into(),
+        "c" => "Credits".into(),
+        other => other.into(),
+    }
+}
+
 fn expected_used(resets_at: std::time::SystemTime, length: std::time::Duration) -> Option<f64> {
     let left = resets_at
         .duration_since(std::time::SystemTime::now())
@@ -2056,6 +2066,7 @@ impl DataContext {
             .or_else(|| self.get_string("i18n.session_window"))
             .unwrap_or("5h")
             .to_string();
+        self.insert_string(&format!("{name}.session.name"), pool_name(&session_label));
         self.insert_string(&format!("{name}.session.label"), session_label);
         let (five_hour, weekly) = usage
             .map(|usage| (usage.session.percentage, usage.weekly.percentage))
@@ -2173,6 +2184,7 @@ impl DataContext {
             .and_then(|usage| usage.week_label.as_deref())
             .unwrap_or("7d")
             .to_string();
+        self.insert_string(&format!("{name}.week.name"), pool_name(&week_label));
         self.insert_string(&format!("{name}.week.label"), week_label);
         let week_length = usage
             .and_then(|usage| {
