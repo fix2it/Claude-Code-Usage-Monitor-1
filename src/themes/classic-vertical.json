@@ -20,7 +20,7 @@
         "offset_y": -52
       },
       "width": "min(62, max(1, host.width - 2))",
-      "height": "max(1, providers.count * 64 - (providers.grok.enabled + providers.copilot.enabled + providers.qoder.enabled) * 22)",
+      "height": "max(1, providers.count * 64 - (providers.grok.enabled + providers.copilot.enabled) * 22)",
       "mouse_events": {
         "right_click": "show_context_menu(\"classic-v1\")"
       },
@@ -1232,7 +1232,7 @@
           "parent": "provider-column",
           "render": "providers.qoder.enabled",
           "width": "canvas.width",
-          "height": "42"
+          "height": "64"
         },
         {
           "id": "qoder-title",
@@ -1281,8 +1281,8 @@
           }
         },
         {
-          "id": "qoder-weekly-value-dark",
-          "name": "qoder-weekly-value-dark",
+          "id": "qoder-plan-value-dark",
+          "name": "qoder-plan-value-dark",
           "parent": "qoder-provider",
           "render": "system.dark",
           "x": "2",
@@ -1291,7 +1291,7 @@
           "height": "14",
           "content": {
             "type": "text",
-            "template": "{qoder.weekly.label} {qoder.weekly.display:usage_badge}",
+            "template": "Plan {qoder.monthly.display:usage_badge}",
             "font_family": "Segoe UI",
             "font_size": "min(10, (canvas.width - 4) / 5.5)",
             "weight": "medium",
@@ -1304,8 +1304,8 @@
           }
         },
         {
-          "id": "qoder-weekly-value-light",
-          "name": "qoder-weekly-value-light",
+          "id": "qoder-plan-value-light",
+          "name": "qoder-plan-value-light",
           "parent": "qoder-provider",
           "render": "1 - system.dark",
           "x": "2",
@@ -1314,7 +1314,7 @@
           "height": "14",
           "content": {
             "type": "text",
-            "template": "{qoder.weekly.label} {qoder.weekly.display:usage_badge}",
+            "template": "Plan {qoder.monthly.display:usage_badge}",
             "font_family": "Segoe UI",
             "font_size": "min(10, (canvas.width - 4) / 5.5)",
             "weight": "medium",
@@ -1327,17 +1327,17 @@
           }
         },
         {
-          "id": "qoder-weekly-bar",
-          "name": "qoder weekly usage",
+          "id": "qoder-plan-bar",
+          "name": "qoder plan usage",
           "parent": "qoder-provider",
-          "render": "qoder.weekly.available",
+          "render": "qoder.monthly.available",
           "x": "4",
           "y": "33",
           "width": "max(1, canvas.width - 8)",
           "height": "3",
           "content": {
             "type": "progress",
-            "value": "qoder.weekly.display",
+            "value": "qoder.monthly.display",
             "direction": "left_to_right",
             "fill": {
               "color": "#6366F1"
@@ -1347,6 +1347,148 @@
             },
             "corner_radius": "1"
           }
+        },
+        {
+          "id": "qoder-extra-value-dark",
+          "name": "dark Qoder extra pool value",
+          "parent": "qoder-provider",
+          "render": "(system.dark) && (qoder.normal.opacity > 0.01)",
+          "x": "2",
+          "y": "40",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "{qoder.session.label} {qoder.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#F5F5F5"
+            }
+          },
+          "visibility": "100 * qoder.normal.opacity"
+        },
+        {
+          "id": "qoder-extra-value-light",
+          "name": "light Qoder extra pool value",
+          "parent": "qoder-provider",
+          "render": "(1 - system.dark) && (qoder.normal.opacity > 0.01)",
+          "x": "2",
+          "y": "40",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "{qoder.session.label} {qoder.session.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#202020"
+            }
+          },
+          "visibility": "100 * qoder.normal.opacity"
+        },
+        {
+          "id": "qoder-extra-bar",
+          "name": "qoder extra pool usage",
+          "parent": "qoder-provider",
+          "render": "(qoder.session.available) && (qoder.normal.opacity > 0.01)",
+          "x": "4",
+          "y": "55",
+          "width": "max(1, canvas.width - 8)",
+          "height": "3",
+          "content": {
+            "type": "progress",
+            "value": "qoder.session.display",
+            "direction": "left_to_right",
+            "fill": {
+              "color": "#6366F1"
+            },
+            "track": {
+              "color": "#80808040"
+            },
+            "corner_radius": "1"
+          },
+          "visibility": "100 * qoder.normal.opacity"
+        },
+        {
+          "id": "qoder-second-value-dark",
+          "name": "dark Qoder second pool value",
+          "parent": "qoder-provider",
+          "render": "(system.dark) && (qoder.hover.opacity > 0.01) && (qoder.week.available)",
+          "x": "2",
+          "y": "40",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "{qoder.week.label} {qoder.week.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#ACACAC"
+            }
+          },
+          "visibility": "100 * qoder.hover.opacity"
+        },
+        {
+          "id": "qoder-second-value-light",
+          "name": "light Qoder second pool value",
+          "parent": "qoder-provider",
+          "render": "(1 - system.dark) && (qoder.hover.opacity > 0.01) && (qoder.week.available)",
+          "x": "2",
+          "y": "40",
+          "width": "max(1, canvas.width - 4)",
+          "height": "14",
+          "content": {
+            "type": "text",
+            "template": "{qoder.week.label} {qoder.week.display:usage_badge}",
+            "font_family": "Segoe UI",
+            "font_size": "min(10, (canvas.width - 4) / 5.5)",
+            "weight": "medium",
+            "rendering": "clear_type",
+            "contrast": "1",
+            "align": "center",
+            "color": {
+              "color": "#161616"
+            }
+          },
+          "visibility": "100 * qoder.hover.opacity"
+        },
+        {
+          "id": "qoder-second-bar",
+          "name": "qoder second pool usage",
+          "parent": "qoder-provider",
+          "render": "(qoder.week.available) && (qoder.hover.opacity > 0.01) && (qoder.week.available)",
+          "x": "4",
+          "y": "55",
+          "width": "max(1, canvas.width - 8)",
+          "height": "3",
+          "content": {
+            "type": "progress",
+            "value": "qoder.week.display",
+            "direction": "left_to_right",
+            "fill": {
+              "color": "#4547A9"
+            },
+            "track": {
+              "color": "#80808040"
+            },
+            "corner_radius": "1"
+          },
+          "visibility": "100 * qoder.hover.opacity"
         }
       ]
     },

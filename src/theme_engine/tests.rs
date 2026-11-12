@@ -1095,11 +1095,12 @@ fn starter_theme_round_trips_and_validates() {
     // 1.4.9 palette follows the taskbar mode without runtime recolouring:
     // five providers over two windows in two modes, plus Grok and Copilot,
     // which fill only the long-window row, plus a credit overlay on that row
-    // for the three providers that report credits, plus Qoder's two
-    // long-window layers, plus the two eight-segment Fable layers.
+    // for the three providers that report credits, plus Qoder's plan row,
+    // extra pool and hover-only second pool in two modes, plus the two
+    // eight-segment Fable layers.
     assert_eq!(
         segments,
-        [vec![10; 5 * 2 * 2 + 2 * 2 + 3 * 2 + 2], vec![8; 2]].concat()
+        [vec![10; 5 * 2 * 2 + 2 * 2 + 3 * 2 + 3 * 2], vec![8; 2]].concat()
     );
     assert!(theme.surfaces[0]
         .children
@@ -2145,8 +2146,13 @@ fn starter_adapts_width_segments_and_collapsed_provider_rows() {
             10,
         ),
         (
+            ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Qoder])),
+            245,
+            10,
+        ),
+        (
             ThemeRuntime::from_providers(ProviderSet::from_enabled(ProviderId::ALL)),
-            815,
+            843,
             2,
         ),
     ] {
@@ -2342,7 +2348,7 @@ fn classic_vertical_stacks_enabled_providers_and_preserves_tray_roots() {
                 ThemeRuntime::from_providers(providers).with_host_dimensions(host_width, 1440);
             let width = (host_width - 2).min(62);
             let provider_height = |provider| match provider {
-                ProviderId::Grok | ProviderId::Copilot | ProviderId::Qoder => 42,
+                ProviderId::Grok | ProviderId::Copilot => 42,
                 _ => 64,
             };
             let height = providers.iter().map(provider_height).sum();
@@ -5578,7 +5584,17 @@ fn render_qoder_previews() {
     use crate::models::{AppUsageData, UsageData, UsageSection};
     use std::time::{Duration, SystemTime};
 
-    let raw = include_str!("../themes/compact-fluent-quad.json");
+    let themes = [
+        (
+            "compact",
+            include_str!("../themes/compact-fluent-quad.json"),
+        ),
+        (
+            "classic",
+            include_str!("../themes/classic-usage-widget.json"),
+        ),
+        ("vertical", include_str!("../themes/classic-vertical.json")),
+    ];
     let out = std::env::temp_dir().join("qoder-previews");
     std::fs::create_dir_all(&out).unwrap();
     let day = Duration::from_secs(86_400);
@@ -5602,23 +5618,30 @@ fn render_qoder_previews() {
             ..Default::default()
         };
         let data = AppUsageData::from_iter([(ProviderId::Qoder, usage)]);
-        let forced = raw.replace("system.dark", "1");
-        let theme: ThemeDocument = serde_json::from_str(&forced).unwrap();
-        for phase in [0.0_f64, 1.0] {
-            let runtime =
-                ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Qoder]))
-                    .with_qoder_state(phase)
-                    .with_show_pace(true);
-            let rendered =
-                render_theme_surface_with_runtime_at_scale(&theme, 0, Some(&data), runtime, 3.0);
-            assert!(rendered.warnings.is_empty(), "{:?}", rendered.warnings);
-            let path = out.join(format!(
-                "qoder-{}-hover-{:.0}.png",
-                if dual { "dual" } else { "single" },
-                phase * 100.0
-            ));
-            write_preview_png(&rendered, &path, true);
-            println!("{}", path.display());
+        for (theme_name, raw) in themes {
+            let forced = raw.replace("system.dark", "1");
+            let theme: ThemeDocument = serde_json::from_str(&forced).unwrap();
+            for phase in [0.0_f64, 1.0] {
+                let runtime =
+                    ThemeRuntime::from_providers(ProviderSet::from_enabled([ProviderId::Qoder]))
+                        .with_qoder_state(phase)
+                        .with_show_pace(true);
+                let rendered = render_theme_surface_with_runtime_at_scale(
+                    &theme,
+                    0,
+                    Some(&data),
+                    runtime,
+                    3.0,
+                );
+                assert!(rendered.warnings.is_empty(), "{:?}", rendered.warnings);
+                let path = out.join(format!(
+                    "qoder-{theme_name}-{}-hover-{:.0}.png",
+                    if dual { "dual" } else { "single" },
+                    phase * 100.0
+                ));
+                write_preview_png(&rendered, &path, true);
+                println!("{}", path.display());
+            }
         }
     }
 }

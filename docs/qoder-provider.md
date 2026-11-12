@@ -69,6 +69,11 @@ window ending at the reset or expiry (`monthly_started_at`,
 `session_started_at`, `week_started_at`). Add-on credits show no expiry and
 are taken to end with the plan.
 
+Classic and vertical themes: the same two rows (plan, then `u`/`c` pool);
+with two pools in use hover switches the bottom row to the second pool, 30%
+darker. These themes have no pace ticks for any provider, so Qoder has none
+there either.
+
 Widget (`compact-fluent-quad`): top row = plan (`qoder.monthly`), bottom row =
 `qoder.session` with marker `u`/`c`; with two pools in use a thin
 `qoder.week` bar appears and hover swaps the bars, text and marker, like
