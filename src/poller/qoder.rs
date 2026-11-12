@@ -282,6 +282,10 @@ fn parse_offset(zone: &str) -> Option<i64> {
         b'-' => (-1, &zone[1..]),
         _ => return None,
     };
+    // Byte slicing below needs ASCII; anything else is not an offset.
+    if !digits.is_ascii() {
+        return None;
+    }
     let (hours, minutes) = match digits.split_once(':') {
         Some((h, m)) => (h.parse::<i64>().ok()?, m.parse::<i64>().ok()?),
         None if digits.len() > 2 => (
@@ -835,6 +839,14 @@ mod tests {
         assert_eq!(bottom_row(0.0, 5.0), pair("u", None));
         assert_eq!(bottom_row(5.0, 0.0), pair("c", None));
         assert_eq!(bottom_row(5.0, 5.0), pair("u", Some("c")));
+    }
+
+    #[test]
+    fn odd_text_after_the_time_zone_reads_as_unknown_not_a_panic() {
+        assert_eq!(parse_offset("+2\u{b7}"), None);
+        assert_eq!(parse_offset("+\u{430}\u{431}\u{432}"), None);
+        assert_eq!(parse_date("Nov25,2026,21:35:12GMT+\u{b7}\u{b7}"), None);
+        assert_eq!(parse_offset("+0530"), Some(5 * 3600 + 30 * 60));
     }
 
     #[test]

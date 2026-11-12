@@ -8962,7 +8962,7 @@
         {
           "id": "qoder-plan-segments-dark",
           "name": "dark Qoder plan segments",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.monthly.available)",
           "visibility": "100",
           "parent": "qoder-provider",
           "x": "12",
@@ -8998,7 +8998,7 @@
         {
           "id": "qoder-plan-segments-dark-pace",
           "name": "dark Qoder plan segments pace tick",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.monthly.available)",
           "visibility": "(100) * qoder.monthly.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "qoder-provider",
           "x": "12 + clamp(round((display.bar_width - 1) * clamp(qoder.monthly.expected_display, 0, 100) / 100), 0, max(0, floor(display.bar_width) - 1))",
@@ -9024,7 +9024,7 @@
         {
           "id": "qoder-plan-value-dark",
           "name": "dark Qoder plan value",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.monthly.available)",
           "visibility": "display.text_opacity",
           "parent": "qoder-provider",
           "x": "12 + display.bar_width + 4 + display.text_slide_x",
@@ -9057,7 +9057,7 @@
         {
           "id": "qoder-plan-segments-light",
           "name": "light Qoder plan segments",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.monthly.available)",
           "visibility": "100",
           "parent": "qoder-provider",
           "x": "12",
@@ -9093,7 +9093,7 @@
         {
           "id": "qoder-plan-segments-light-pace",
           "name": "light Qoder plan segments pace tick",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.monthly.available)",
           "visibility": "(100) * qoder.monthly.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "qoder-provider",
           "x": "12 + clamp(round((display.bar_width - 1) * clamp(qoder.monthly.expected_display, 0, 100) / 100), 0, max(0, floor(display.bar_width) - 1))",
@@ -9119,7 +9119,7 @@
         {
           "id": "qoder-plan-value-light",
           "name": "light Qoder plan value",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.monthly.available)",
           "visibility": "display.text_opacity",
           "parent": "qoder-provider",
           "x": "12 + display.bar_width + 4 + display.text_slide_x",
@@ -9152,7 +9152,7 @@
         {
           "id": "qoder-extra-marker-dark-normal",
           "name": "dark Qoder marker w normal",
-          "render": "(system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "visibility": "100",
           "parent": "qoder-provider",
           "x": "0",
@@ -9185,7 +9185,7 @@
         {
           "id": "qoder-extra-marker-light-normal",
           "name": "light Qoder marker w normal",
-          "render": "(1 - system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((1 - system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "visibility": "100",
           "parent": "qoder-provider",
           "x": "0",
@@ -9284,7 +9284,7 @@
         {
           "id": "qoder-extra-segments-dark",
           "name": "dark Qoder extra pool segments",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.session.available)",
           "visibility": "100",
           "parent": "qoder-provider",
           "x": "12",
@@ -9320,7 +9320,7 @@
         {
           "id": "qoder-extra-segments-dark-pace",
           "name": "dark Qoder extra pool segments pace tick",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.session.available)",
           "visibility": "(100) * qoder.session.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "qoder-provider",
           "x": "12 + clamp(round((display.bar_width - 1) * clamp(qoder.session.expected_display, 0, 100) / 100), 0, max(0, floor(display.bar_width) - 1))",
@@ -9346,7 +9346,7 @@
         {
           "id": "qoder-extra-segments-light",
           "name": "light Qoder extra pool segments",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.session.available)",
           "visibility": "100",
           "parent": "qoder-provider",
           "x": "12",
@@ -9382,7 +9382,7 @@
         {
           "id": "qoder-extra-segments-light-pace",
           "name": "light Qoder extra pool segments pace tick",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.session.available)",
           "visibility": "(100) * qoder.session.expected_available * display.show_pace * (1 - display.mode_bar_progress)",
           "parent": "qoder-provider",
           "x": "12 + clamp(round((display.bar_width - 1) * clamp(qoder.session.expected_display, 0, 100) / 100), 0, max(0, floor(display.bar_width) - 1))",
@@ -9532,7 +9532,7 @@
         {
           "id": "qoder-extra-text-dark-normal",
           "name": "dark Qoder extra pool text",
-          "render": "(system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "visibility": "display.text_opacity",
           "parent": "qoder-provider",
           "x": "12 + display.bar_width + 4 + display.text_slide_x",
@@ -9565,7 +9565,7 @@
         {
           "id": "qoder-extra-text-light-normal",
           "name": "light Qoder extra pool text",
-          "render": "(1 - system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((1 - system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "visibility": "display.text_opacity",
           "parent": "qoder-provider",
           "x": "12 + display.bar_width + 4 + display.text_slide_x",
@@ -9664,7 +9664,7 @@
         {
           "id": "qoder-plan-value-dark-pct",
           "name": "dark Qoder plan value compact percent",
-          "render": "(system.dark) && (display.percent_opacity > 0.01)",
+          "render": "((system.dark) && (display.percent_opacity > 0.01)) && (qoder.monthly.available)",
           "visibility": "display.percent_opacity",
           "parent": "qoder-provider",
           "x": "12",
@@ -9697,7 +9697,7 @@
         {
           "id": "qoder-plan-value-light-pct",
           "name": "light Qoder plan value compact percent",
-          "render": "(1 - system.dark) && (display.percent_opacity > 0.01)",
+          "render": "((1 - system.dark) && (display.percent_opacity > 0.01)) && (qoder.monthly.available)",
           "visibility": "display.percent_opacity",
           "parent": "qoder-provider",
           "x": "12",
@@ -9730,7 +9730,7 @@
         {
           "id": "qoder-extra-text-dark-normal-pct",
           "name": "dark Qoder extra pool text compact percent",
-          "render": "(system.dark) && (qoder.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "render": "((system.dark) && (qoder.normal.opacity > 0.01) && (display.percent_opacity > 0.01)) && (qoder.session.available)",
           "visibility": "display.percent_opacity * qoder.normal.opacity",
           "parent": "qoder-provider",
           "x": "12",
@@ -9763,7 +9763,7 @@
         {
           "id": "qoder-extra-text-light-normal-pct",
           "name": "light Qoder extra pool text compact percent",
-          "render": "(1 - system.dark) && (qoder.normal.opacity > 0.01) && (display.percent_opacity > 0.01)",
+          "render": "((1 - system.dark) && (qoder.normal.opacity > 0.01) && (display.percent_opacity > 0.01)) && (qoder.session.available)",
           "visibility": "display.percent_opacity * qoder.normal.opacity",
           "parent": "qoder-provider",
           "x": "12",

@@ -1720,7 +1720,7 @@
         {
           "id": "qoder-plan-segments-dark",
           "name": "dark Qoder plan segments",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.monthly.available)",
           "parent": "qoder-provider",
           "y": "5",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
@@ -1744,7 +1744,7 @@
         {
           "id": "qoder-plan-value-dark",
           "name": "dark Qoder plan value",
-          "render": "system.dark",
+          "render": "(system.dark) && (qoder.monthly.available)",
           "parent": "qoder-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
           "y": "5",
@@ -1767,7 +1767,7 @@
         {
           "id": "qoder-extra-segments-dark",
           "name": "dark Qoder extra pool segments",
-          "render": "(system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "parent": "qoder-provider",
           "y": "28",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
@@ -1792,7 +1792,7 @@
         {
           "id": "qoder-extra-value-dark",
           "name": "dark Qoder extra pool value",
-          "render": "(system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "parent": "qoder-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
           "y": "28",
@@ -1865,7 +1865,7 @@
         {
           "id": "qoder-plan-segments-light",
           "name": "light Qoder plan segments",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.monthly.available)",
           "parent": "qoder-provider",
           "y": "5",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
@@ -1889,7 +1889,7 @@
         {
           "id": "qoder-plan-value-light",
           "name": "light Qoder plan value",
-          "render": "1 - system.dark",
+          "render": "(1 - system.dark) && (qoder.monthly.available)",
           "parent": "qoder-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
           "y": "5",
@@ -1912,7 +1912,7 @@
         {
           "id": "qoder-extra-segments-light",
           "name": "light Qoder extra pool segments",
-          "render": "(1 - system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((1 - system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "parent": "qoder-provider",
           "y": "28",
           "width": "ceil(10 / max(1, providers.count)) * 11 - 1",
@@ -1937,7 +1937,7 @@
         {
           "id": "qoder-extra-value-light",
           "name": "light Qoder extra pool value",
-          "render": "(1 - system.dark) && (qoder.normal.opacity > 0.01)",
+          "render": "((1 - system.dark) && (qoder.normal.opacity > 0.01)) && (qoder.session.available)",
           "parent": "qoder-provider",
           "x": "ceil(10 / max(1, providers.count)) * 11 - 1 + 4",
           "y": "28",

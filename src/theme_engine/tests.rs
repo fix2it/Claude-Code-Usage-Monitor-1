@@ -5645,3 +5645,36 @@ fn render_qoder_previews() {
         }
     }
 }
+
+/// A Qoder pool the parser could not read must look unknown, not 0% used:
+/// its row is not drawn at all in any built-in theme.
+#[test]
+fn qoder_rows_hide_when_their_pool_is_unknown() {
+    let themes = [
+        include_str!("../themes/compact-fluent-quad.json"),
+        include_str!("../themes/classic-usage-widget.json"),
+        include_str!("../themes/classic-vertical.json"),
+    ];
+    for raw in themes {
+        let theme: ThemeDocument = serde_json::from_str(raw).unwrap();
+        let mut context = DataContext::from_usage(None, &Canvas::default());
+        context.insert("system.dark", 1.0);
+        context.insert("qoder.normal.opacity", 1.0);
+        context.insert("qoder.monthly.available", 0.0);
+        context.insert("qoder.session.available", 0.0);
+        let rows = theme.surfaces[0]
+            .children
+            .iter()
+            .filter(|o| o.id.starts_with("qoder-plan-") || o.id.starts_with("qoder-extra-"))
+            .collect::<Vec<_>>();
+        assert!(!rows.is_empty(), "{}", theme.id);
+        for row in rows {
+            assert_eq!(
+                evaluate(&row.render.0, &context).unwrap(),
+                0.0,
+                "{}",
+                row.id
+            );
+        }
+    }
+}
