@@ -313,7 +313,13 @@ impl SettingsFile {
             ProviderId::Cursor => self.show_cursor = enabled,
             ProviderId::Grok => self.show_grok = enabled,
             ProviderId::Copilot => self.show_copilot = enabled,
-            ProviderId::Qoder => self.show_qoder = enabled,
+            // While qodercli is missing Qoder reads as off; keep the saved
+            // choice instead of overwriting it when another provider toggles.
+            ProviderId::Qoder => {
+                if enabled || crate::poller::qoder_installed() {
+                    self.show_qoder = enabled;
+                }
+            }
         }
     }
 

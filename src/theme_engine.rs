@@ -1892,7 +1892,18 @@ impl DataContext {
             (runtime.codex_main_enabled && runtime.codex_x_enabled) as u8 as f64,
         );
         context.insert_hover_crossfade("opencode", runtime.opencode_crossfade_opacity);
-        context.insert_hover_crossfade("qoder", runtime.qoder_crossfade_opacity);
+        // Qoder's hover only swaps in a second pool. If a poll removes that
+        // pool mid-hover, rest at phase 0 so the single bottom row stays drawn.
+        let qoder_phase = if data
+            .and_then(|data| data.get(ProviderId::Qoder))
+            .is_some_and(|usage| usage.week.is_some())
+        {
+            runtime.qoder_crossfade_opacity.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        context.insert("qoder.hover_phase", qoder_phase);
+        context.insert_hover_crossfade("qoder", qoder_phase);
         if let Some(data) = data {
             for account in &data.accounts {
                 let key = format!(
